@@ -2,68 +2,79 @@ from flask import Flask, request
 
 app = Flask(__name__)
 
+# HTML per la navbar comune
+navbar = """
+<div style="background-color: #007bff; padding: 10px; text-align: center;">
+    <a href="/" style="color: white; margin: 0 15px; text-decoration: none;">Home</a>
+    <a href="/about" style="color: white; margin: 0 15px; text-decoration: none;">About</a>
+    <a href="/contact" style="color: white; margin: 0 15px; text-decoration: none;">Contact</a>
+</div>
+"""
+
 @app.route('/')
 def hello():
-    return """
+    return f"""
     <html>
     <head>
         <title>FocusIA - Home</title>
         <style>
-            body {
+            body {{
                 font-family: Arial, sans-serif;
                 background-color: #f0f0f0;
                 text-align: center;
                 padding: 50px;
-            }
-            h1 {
+                margin: 0;
+            }}
+            h1 {{
                 color: #333;
-            }
-            a {
+            }}
+            a {{
                 color: #007bff;
                 text-decoration: none;
-            }
-            a:hover {
+            }}
+            a:hover {{
                 text-decoration: underline;
-            }
+            }}
         </style>
     </head>
     <body>
+        {navbar}
         <h1>Hello, FocusIA!</h1>
         <p>Welcome to the homepage of FocusIA.</p>
-        <p><a href="/about">Visit the About page</a> | <a href="/contact">Contact Us</a></p>
     </body>
     </html>
     """
 
 @app.route('/about')
 def about():
-    return """
+    return f"""
     <html>
     <head>
         <title>FocusIA - About</title>
         <style>
-            body {
+            body {{
                 font-family: Arial, sans-serif;
                 background-color: #f0f0f0;
                 text-align: center;
                 padding: 50px;
-            }
-            h1 {
+                margin: 0;
+            }}
+            h1 {{
                 color: #333;
-            }
-            a {
+            }}
+            a {{
                 color: #007bff;
                 text-decoration: none;
-            }
-            a:hover {
+            }}
+            a:hover {{
                 text-decoration: underline;
-            }
+            }}
         </style>
     </head>
     <body>
+        {navbar}
         <h1>About FocusIA</h1>
         <p>This is the About page for FocusIA!</p>
-        <p><a href="/">Back to Home</a> | <a href="/contact">Contact Us</a></p>
     </body>
     </html>
     """
@@ -84,6 +95,7 @@ def contact():
                     background-color: #f0f0f0;
                     text-align: center;
                     padding: 50px;
+                    margin: 0;
                 }}
                 h1 {{
                     color: #333;
@@ -98,6 +110,7 @@ def contact():
             </style>
         </head>
         <body>
+            {navbar}
             <h1>Thank You, {name}!</h1>
             <p>We have received your message:</p>
             <p><strong>Email:</strong> {email}</p>
@@ -106,53 +119,55 @@ def contact():
         </body>
         </html>
         """
-    return """
+    return f"""
     <html>
     <head>
         <title>FocusIA - Contact</title>
         <style>
-            body {
+            body {{
                 font-family: Arial, sans-serif;
                 background-color: #f0f0f0;
                 text-align: center;
                 padding: 50px;
-            }
-            h1 {
+                margin: 0;
+            }}
+            h1 {{
                 color: #333;
-            }
-            a {
+            }}
+            a {{
                 color: #007bff;
                 text-decoration: none;
-            }
-            a:hover {
+            }}
+            a:hover {{
                 text-decoration: underline;
-            }
-            form {
+            }}
+            form {{
                 margin-top: 20px;
-            }
-            label {
+            }}
+            label {{
                 display: block;
                 margin: 10px 0 5px;
-            }
-            input, textarea {
+            }}
+            input, textarea {{
                 width: 100%;
                 max-width: 400px;
                 padding: 8px;
                 margin-bottom: 10px;
-            }
-            button {
+            }}
+            button {{
                 background-color: #007bff;
                 color: white;
                 padding: 10px 20px;
                 border: none;
                 cursor: pointer;
-            }
-            button:hover {
+            }}
+            button:hover {{
                 background-color: #0056b3;
-            }
+            }}
         </style>
     </head>
     <body>
+        {navbar}
         <h1>Contact Us</h1>
         <p>Fill out the form below to get in touch!</p>
         <form action="/contact" method="POST">

@@ -15,6 +15,7 @@ import requests
 from bs4 import BeautifulSoup
 from googlesearch import search
 import wikipedia
+import init_db
 import time
 import numpy as np
 from flask import Flask, request, render_template_string, send_from_directory

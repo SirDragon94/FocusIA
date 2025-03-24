@@ -462,17 +462,8 @@ def index():
 
 @app.route('/chat', methods=['POST'])
 def chat():
-    logger.info("Ricevuta richiesta POST a /chat")
     prompt = request.form.get('prompt', '')
-    logger.info(f"Prompt ricevuto: {prompt}")
-    try:
-        logger.info("Inizio generazione risposta")
-        response = generate_model_response(prompt)
-        logger.info(f"Risposta generata: {response}")
-    except Exception as e:
-        logger.error(f"Errore durante la generazione della risposta: {str(e)}")
-        raise
-    logger.info("Inizio rendering del template")
+    response = generate_model_response(prompt)
     return render_template_string("""
 <!DOCTYPE html>
 <html lang="it">

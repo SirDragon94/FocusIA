@@ -345,13 +345,14 @@ def index():
 
 @app.route('/chat', methods=['POST'])
 def chat():
-    process = psutil.Process()
-    mem_info = process.memory_info()
-    logger.info(f"Memoria usata: {mem_info.rss / 1024 / 1024:.2f} MB")
-    
-    logger.info("Ricevuta richiesta POST a /chat")
-    prompt = request.form.get('prompt', '')
-    logger.info(f"Prompt ricevuto: {prompt}")
+    app.logger.info("Inizio della richiesta POST a /chat")
+    prompt = request.form['prompt']
+    app.logger.info(f"Prompt ricevuto: {prompt}")
+    app.logger.info("Generazione della risposta in corso...")
+    response = focusia.chatbot_response(prompt)
+    app.logger.info(f"Risposta generata: {response}")
+    app.logger.info("Rendering del template index.html")
+    return render_template('index.html', response=response)
     try:
         logger.info("Inizio generazione risposta")
         response = generate_model_response(prompt)

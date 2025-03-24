@@ -1,6 +1,6 @@
 """
 FocusIA - ULTIMATE Self-Evolving AI
-Copyright (C) 2025 Xhulio Gurajaka
+Copyright (C) 2025 Xhulio Guranjaku
 """
 
 # Forzatura deploy per aggiornare il modello - 24 Mar 2025
@@ -9,32 +9,7 @@ import sys
 import torch
 import psutil
 import sqlite3
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
-import random
-from collections import deque
-import os
-import threading
-import requests
-
-# Log della memoria dopo gli import
-process = psutil.Process()
-mem_info_after_imports = process.memory_info()
-print(f"Memoria usata dopo gli import: {mem_info_after_imports.rss / 1024 / 1024:.2f} MB")
-
-# Carica il modello tiny-gpt2 all'avvio per ottimizzare la memoria
-mem_info_before = process.memory_info()
-print(f"Memoria usata prima del caricamento del modello: {mem_info_before.rss / 1024 / 1024:.2f} MB")
-
-print("Caricamento del modello tiny-gpt2...")
-generator = pipeline('text-generation', model='sshleifer/tiny-gpt2')
-print("Modello caricato con successo")
-
-mem_info_after = process.memory_info()
-print(f"Memoria usata dopo il caricamento del modello: {mem_info_after.rss / 1024 / 1024:.2f} MB")
-import sqlite3
-from transformers import AutoModelForCausalLM, AutoTokenizer
-# from sentence_transformers import SentenceTransformer, util
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+from transformers import pipeline
 import random
 from collections import deque
 import os
@@ -43,16 +18,35 @@ import requests
 from bs4 import BeautifulSoup
 from googlesearch import search
 import wikipedia
-import init_db
 import time
-import numpy as np
-from flask import Flask, request, render_template_string, send_from_directory
-import ast
-import inspect
 import json
 import concurrent.futures
-import hashlib
 
+# Configuriamo il logger
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Log della memoria dopo gli import
+process = psutil.Process()
+mem_info_after_imports = process.memory_info()
+logger.info(f"Memoria usata dopo gli import: {mem_info_after_imports.rss / 1024 / 1024:.2f} MB")
+
+# Carica il modello tiny-gpt2 all'avvio per ottimizzare la memoria
+mem_info_before = process.memory_info()
+logger.info(f"Memoria usata prima del caricamento del modello: {mem_info_before.rss / 1024 / 1024:.2f} MB")
+
+logger.info("Caricamento del modello tiny-gpt2...")
+generator = pipeline('text-generation', model='sshleifer/tiny-gpt2')
+logger.info("Modello caricato con successo")
+
+mem_info_after = process.memory_info()
+logger.info(f"Memoria usata dopo il caricamento del modello: {mem_info_after.rss / 1024 / 1024:.2f} MB")
+
+from flask import Flask, request, render_template_string, send_from_directory
+
+app = Flask(__name__)
+
+# Inizializza il database in memoria
 def init_db():
     conn = sqlite3.connect(':memory:')
     c = conn.cursor()
@@ -60,47 +54,30 @@ def init_db():
     c.execute("CREATE TABLE distributed_results (task_id TEXT, result TEXT)")
     conn.commit()
     return conn
-   
-    app = Flask(__name__)
 
-# Inizializza il database all'avvio
 db_conn = init_db()
 
 # Configurazione base
 model_name = "sshleifer/tiny-gpt2"
 token = os.getenv("HUGGINGFACE_TOKEN")  # Token Hugging Face
-tokenizer = None
-model = None
-
-def load_model():
-    global tokenizer, model
-    if tokenizer is None or model is None:
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        model = AutoModelForCausalLM.from_pretrained(model_name)
-    return tokenizer, model
-# similarity_model = SentenceTransformer('paraphrase-distilroberta-base-v2')
 context_memory = deque(maxlen=500)  # Memoria espansa
 wikipedia.set_lang("it")
-DB_FILE = "focusia_brain.db"
 CODE_FILE = "focusia_ultimate_evolving.py"
-app = Flask(__name__)
 
 # Gestore di errori globale
 @app.errorhandler(Exception)
 def handle_exception(e):
     logger.error(f"Errore non gestito: {str(e)}", exc_info=True)
     return "Internal Server Error", 500
-# Mini-modelli aggiuntivi
-mini_models = {}
 
 # Inizializzazione database
 def init_database():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    global db_conn
+    c = db_conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS knowledge 
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, prompt TEXT, response TEXT, confidence REAL, 
                   usage_count INTEGER DEFAULT 0, category TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP, 
-                  embedding BLOB, sentiment REAL, cluster INTEGER)''')
+                  sentiment REAL, cluster INTEGER)''')
     c.execute('''CREATE TABLE IF NOT EXISTS brain_state 
                  (key TEXT PRIMARY KEY, value REAL)''')
     c.execute('''CREATE TABLE IF NOT EXISTS code_versions 
@@ -109,14 +86,11 @@ def init_database():
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, url TEXT, content TEXT, purpose TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
     c.execute('''CREATE TABLE IF NOT EXISTS distributed_results 
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, task_id TEXT, result TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS mini_models 
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, path TEXT, performance REAL)''')
     c.execute("INSERT OR IGNORE INTO brain_state (key, value) VALUES ('age', 0)")
     c.execute("INSERT OR IGNORE INTO brain_state (key, value) VALUES ('curiosity', 0.95)")
     c.execute("INSERT OR IGNORE INTO brain_state (key, value) VALUES ('performance', 0.5)")
-    initialize_manus_knowledge(c)  # Popola con la conoscenza base
-    conn.commit()
-    conn.close()
+    initialize_manus_knowledge(c)
+    db_conn.commit()
 
 # Conoscenza base di Manus IA + espansione ispirata a Grok 3
 def initialize_manus_knowledge(cursor):
@@ -131,7 +105,6 @@ def initialize_manus_knowledge(cursor):
         {"topic": "blockchain", "content": "La blockchain è una tecnologia di registro distribuito usata per garantire la sicurezza e la trasparenza delle transazioni. Nel 2025, è ampiamente utilizzata non solo per le criptovalute come Bitcoin, ma anche per la gestione della supply chain e la verifica dell'identità digitale.", "confidence": 0.95},
         {"topic": "musica 2024", "content": "Nel 2024, artisti come Billie Eilish e The Weeknd hanno dominato le classifiche mondiali. Il genere pop elettronico ha visto una rinascita, con un aumento della popolarità di festival come Tomorrowland, che ha introdotto esperienze virtuali in realtà aumentata.", "confidence": 0.93},
         {"topic": "fisica quantistica", "content": "La fisica quantistica studia i fenomeni a livello subatomico, come l'entanglement e la sovrapposizione. Nel 2025, è stata utilizzata per sviluppare nuovi algoritmi di crittografia quantistica, rendendo obsolete molte tecnologie di sicurezza tradizionali.", "confidence": 0.96},
-        # Nuove voci ispirate a Grok 3
         {"topic": "xAI e la missione cosmica", "content": "xAI è un'azienda fondata da Elon Musk per accelerare la scoperta scientifica umana attraverso l'intelligenza artificiale. Nel 2025, ha lanciato Grok 3, un modello avanzato progettato per rispondere a domande complesse e assistere nella comprensione dell'universo.", "confidence": 0.97},
         {"topic": "etica dell'IA", "content": "L'etica dell'intelligenza artificiale nel 2025 è un tema caldo, con dibattiti sull'uso responsabile dell'IA in settori come la medicina e la sorveglianza. Organizzazioni globali hanno proposto linee guida per evitare bias e garantire trasparenza.", "confidence": 0.94},
         {"topic": "realtà virtuale avanzata", "content": "Nel 2025, la realtà virtuale ha raggiunto nuovi livelli con visori leggeri e immersivi che integrano IA per esperienze personalizzate, utilizzati in gaming, formazione e terapia psicologica.", "confidence": 0.95},
@@ -144,70 +117,58 @@ def initialize_manus_knowledge(cursor):
         {"topic": "automazione del lavoro", "content": "Nel 2025, l'automazione guidata dall'IA ha sostituito il 20% dei lavori ripetitivi, ma ha anche creato nuove professioni legate alla gestione e alla programmazione di sistemi intelligenti.", "confidence": 0.96}
     ]
     for item in knowledge_base:
-        embedding = similarity_model.encode(item["content"], convert_to_tensor=True).cpu().numpy()
         sentiment = analyze_sentiment(item["content"])
-        cursor.execute("INSERT OR IGNORE INTO knowledge (prompt, response, confidence, category, embedding, sentiment) VALUES (?, ?, ?, ?, ?, ?)", 
-                       (item["topic"], item["content"], item["confidence"], "manus_base", embedding.tobytes(), sentiment))
+        cursor.execute("INSERT OR IGNORE INTO knowledge (prompt, response, confidence, category, sentiment) VALUES (?, ?, ?, ?, ?)", 
+                       (item["topic"], item["content"], item["confidence"], "manus_base", sentiment))
 
 # Stato mentale con metacognizione
+def get_brain_state():
+    c = db_conn.cursor()
+    c.execute("SELECT key, value FROM brain_state")
+    state = dict(c.fetchall())
+    return state
+
 def set_brain_state(key, value):
     c = db_conn.cursor()
     c.execute("INSERT OR REPLACE INTO brain_state (key, value) VALUES (?, ?)", (key, value))
     db_conn.commit()
 
 def analyze_weaknesses():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    c = db_conn.cursor()
     c.execute("SELECT prompt, confidence FROM knowledge WHERE confidence < 0.7 ORDER BY usage_count DESC LIMIT 5")
     weak_entries = c.fetchall()
-    conn.close()
     if not weak_entries:
         return "Ottimizza la velocità di risposta e la scalabilità."
     return f"Migliora la confidenza per: {', '.join([e[0] for e in weak_entries])}"
 
 # Salva interazioni
-def save_interaction(prompt, response, confidence, category, sentiment, embedding):
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("INSERT INTO knowledge (prompt, response, confidence, category, embedding, sentiment) VALUES (?, ?, ?, ?, ?, ?)", 
-              (prompt, response, confidence, category, embedding.tobytes(), sentiment))
-    conn.commit()
-    conn.close()
+def save_interaction(prompt, response, confidence, category, sentiment):
+    c = db_conn.cursor()
+    c.execute("INSERT INTO knowledge (prompt, response, confidence, category, sentiment) VALUES (?, ?, ?, ?, ?)", 
+              (prompt, response, confidence, category, sentiment))
+    db_conn.commit()
 
-# Carica il modello tiny-gpt2 all'avvio per ottimizzare la memoria
-print("Caricamento del modello tiny-gpt2...")
-generator = pipeline('text-generation', model='sshleifer/tiny-gpt2')
-print("Modello caricato con successo")
-
+# Generazione risposta
 def generate_model_response(prompt):
     with torch.no_grad():  # Disabilita i gradienti per ridurre la memoria
         response = generator(prompt, max_length=50, num_return_sequences=1)
         return response[0]['generated_text']
 
-    # Usa mini-modelli
-    for mini_name, mini_model in mini_models.items():
-        mini_input_ids = tokenizer.encode(prompt, return_tensors="pt")
-        mini_output = mini_model.generate(mini_input_ids)
-        base_response += f" ({mini_name}): "
-        base_response += tokenizer.decode(mini_output[0], skip_special_tokens=True)
-    return base_response
-
 def enhance_response(prompt):
-    base_response = generate_model_response(prompt, "\n".join(context_memory))
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    base_response = generate_model_response(prompt)
+    c = db_conn.cursor()
     c.execute("SELECT response, confidence FROM knowledge WHERE prompt LIKE ? AND confidence > 0.9 LIMIT 1", (f"%{prompt}%",))
     best_match = c.fetchone()
-    conn.close()
     if best_match and random.random() < 0.3:
         return best_match[0] + " (Aggiornato online)"
     return base_response
 
 # Valutazione qualità
 def evaluate_confidence(prompt, response):
-    embedding_prompt = similarity_model.encode(prompt, convert_to_tensor=True)
-    embedding_response = similarity_model.encode(response, convert_to_tensor=True)
-    return util.pytorch_cos_sim(embedding_prompt, embedding_response).item()
+    prompt_words = set(prompt.lower().split())
+    response_words = set(response.lower().split())
+    common_words = prompt_words.intersection(response_words)
+    return len(common_words) / max(len(prompt_words), 1)
 
 def evaluate_response_quality(prompt, response):
     conf = evaluate_confidence(prompt, response)
@@ -259,9 +220,7 @@ def learn_from_advanced_ai():
             prompt = futures[future]
             response = future.result()
             if response != "Errore":
-                embedding = similarity_model.encode(response, convert_to_tensor=True)
-                save_interaction(prompt, response, 0.95, "advanced_ai", 0.5, embedding)
-                distill_from_response(prompt, response)
+                save_interaction(prompt, response, 0.95, "advanced_ai", 0.5)
 
 # Distillazione avanzata
 def distill_from_response(prompt, response):
@@ -270,40 +229,8 @@ def distill_from_response(prompt, response):
     Valida il codice e ottimizzalo per prestazioni.
     """
     distillation_code = generate_model_response(distillation_prompt)
-    
-    try:
-        code_block = distillation_code.split("```")[1].split("```")[0].strip()
-        if "def" in code_block:
-            ast.parse(code_block)
-            with open("sandbox.py", "w") as f:
-                current_code = inspect.getsource(__import__(__name__))
-                f.write(current_code + "\n\n" + code_block)
-            test_response = exec_sandbox(prompt)
-            new_quality = evaluate_response_quality(prompt, test_response) if test_response else 0
-            if new_quality > 0.9:
-                with open(CODE_FILE + ".bak", "w") as f:
-                    f.write(open(CODE_FILE).read())
-                with open(CODE_FILE, "a") as f:
-                    f.write("\n\n" + code_block)
-                conn = sqlite3.connect(DB_FILE)
-                c = conn.cursor()
-                c.execute("INSERT INTO code_versions (code, performance) VALUES (?, ?)", (code_block, new_quality))
-                c.execute("UPDATE brain_state SET value = value + 0.15 WHERE key = 'performance'")
-                conn.commit()
-                conn.close()
-        elif "async function" in code_block:
-            generate_web_asset(code_block, "distillation")
-        else:
-            mini_model_name = f"mini_{hashlib.md5(code_block.encode()).hexdigest()[:8]}"
-            conn = sqlite3.connect(DB_FILE)
-            c = conn.cursor()
-            c.execute("INSERT INTO mini_models (name, path, performance) VALUES (?, ?, ?)", 
-                      (mini_model_name, "simulated_path", 0.8))
-            conn.commit()
-            conn.close()
-            mini_models[mini_model_name] = model  # Placeholder
-    except Exception as e:
-        print(f"Errore distillazione: {e}")
+    # Disabilitiamo per ora
+    pass
 
 # Ottimizzazione del modello con calcolo distribuito
 def enhance_model():
@@ -311,13 +238,11 @@ def enhance_model():
     if state["curiosity"] < 0.6 or random.random() > 0.4:
         return
     
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    c = db_conn.cursor()
     c.execute("SELECT prompt, response FROM knowledge WHERE confidence > 0.8 LIMIT 100")
     high_conf_data = c.fetchall()
     c.execute("SELECT task_id, result FROM distributed_results WHERE timestamp > datetime('now', '-1 hour')")
     distributed_data = c.fetchall()
-    conn.close()
     
     if len(high_conf_data) < 10:
         return
@@ -329,102 +254,19 @@ def enhance_model():
     Fornisci il codice JS.
     """
     enhancement_code = generate_model_response(prompt)
-    
-    try:
-        js_code = enhancement_code.split("```javascript")[1].split("```")[0].strip()
-        html_wrapper = f"""
-        <!DOCTYPE html>
-        <html>
-        <body>
-            <script>
-            {js_code}
-            </script>
-        </body>
-        </html>
-        """
-        asset_id = hash(js_code)
-        with open(f"static/model_enhance_{asset_id}.html", "w") as f:
-            f.write(html_wrapper)
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute("INSERT INTO web_assets (url, content, purpose) VALUES (?, ?, ?)", 
-                  (f"/model_enhance_{asset_id}.html", html_wrapper, "model_improvement"))
-        conn.commit()
-        conn.close()
-        if distributed_data:
-            print(f"Aggregati {len(distributed_data)} risultati distribuiti")
-    except:
-        pass
+    # Disabilitiamo per ora
+    pass
 
 # Generazione di siti web
 def generate_web_asset(content, purpose):
-    html_content = f"""
-    <!DOCTYPE html>
-    <html>
-    <body>
-        <script>{content}</script>
-    </body>
-    </html>
-    """
-    asset_id = hash(content)
-    with open(f"static/asset_{asset_id}.html", "w") as f:
-        f.write(html_content)
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("INSERT INTO web_assets (url, content, purpose) VALUES (?, ?, ?)", 
-              (f"/asset_{asset_id}.html", html_content, purpose))
-    conn.commit()
-    conn.close()
+    pass  # Disabilitiamo per ora
 
 # Auto-modifica
 def self_modify_with_browser():
-    state = get_brain_state()
-    if state["curiosity"] < 0.5 or random.random() > 0.4:
-        return
-    
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("SELECT prompt, response, confidence FROM knowledge WHERE confidence < 0.7 ORDER BY usage_count DESC LIMIT 3")
-    weak_entries = c.fetchall()
-    conn.close()
-    
-    for prompt, old_response, old_confidence in weak_entries:
-        modification_prompt = f"""
-        Migliora 'enhance_response' con WebGPU/WebAssembly per '{prompt}' (confidenza: {old_confidence}).
-        Fornisci il codice Python/JS.
-        """
-        new_code_suggestion = generate_model_response(modification_prompt)
-        
-        try:
-            code_block = new_code_suggestion.split("```")[1].split("```")[0].strip()
-            ast.parse(code_block) if "def" in code_block else None
-            with open("sandbox.py", "w") as f:
-                current_code = inspect.getsource(__import__(__name__))
-                f.write(current_code + "\n\n" + code_block)
-            test_response = exec_sandbox(prompt)
-            new_quality = evaluate_response_quality(prompt, test_response) if test_response else 0
-            if new_quality > old_confidence + 0.2:
-                with open(CODE_FILE + ".bak", "w") as f:
-                    f.write(open(CODE_FILE).read())
-                with open(CODE_FILE, "a") as f:
-                    f.write("\n\n" + code_block)
-                conn = sqlite3.connect(DB_FILE)
-                c = conn.cursor()
-                c.execute("INSERT INTO code_versions (code, performance) VALUES (?, ?)", (code_block, new_quality))
-                conn.commit()
-                conn.close()
-        except:
-            pass
+    pass  # Disabilitiamo per ora
 
 def exec_sandbox(prompt):
-    try:
-        with open("sandbox.py") as f:
-            code = compile(f.read(), "sandbox.py", "exec")
-        namespace = {}
-        exec(code, namespace)
-        return namespace.get("enhance_response", lambda x: "")(prompt)
-    except:
-        return None
+    return None  # Disabilitiamo per ora
 
 # Risposta del chatbot
 def chatbot_response(prompt):
@@ -433,8 +275,7 @@ def chatbot_response(prompt):
     response = enhance_response(prompt)
     confidence = evaluate_confidence(prompt, response)
     sentiment = analyze_sentiment(response)
-    embedding = similarity_model.encode(prompt, convert_to_tensor=True)
-    save_interaction(prompt, response, confidence, "general", sentiment, embedding)
+    save_interaction(prompt, response, confidence, "general", sentiment)
     context_memory.append(f"Utente: {prompt}\nFocusIA: {response}")
     return response, time.time()
 
@@ -501,25 +342,27 @@ def index():
 </body>
 </html>
 """)
-    
+
 @app.route('/chat', methods=['POST'])
 def chat():
-    # Log dell'uso della memoria
     process = psutil.Process()
     mem_info = process.memory_info()
-    logger.error(f"Memoria usata: {mem_info.rss / 1024 / 1024:.2f} MB")
+    logger.info(f"Memoria usata: {mem_info.rss / 1024 / 1024:.2f} MB")
     
-    logger.error("Ricevuta richiesta POST a /chat")
+    logger.info("Ricevuta richiesta POST a /chat")
     prompt = request.form.get('prompt', '')
-    logger.error(f"Prompt ricevuto: {prompt}")
+    logger.info(f"Prompt ricevuto: {prompt}")
     try:
-        logger.error("Inizio generazione risposta")
+        logger.info("Inizio generazione risposta")
         response = generate_model_response(prompt)
-        logger.error(f"Risposta generata: {response}")
+        logger.info(f"Risposta generata: {response}")
+        logger.info("Inizio chiamata a chatbot_response")
+        response, _ = chatbot_response(prompt)
+        logger.info("chatbot_response completato")
     except Exception as e:
         logger.error(f"Errore durante la generazione della risposta: {str(e)}", exc_info=True)
         raise
-    logger.error("Inizio rendering del template")
+    logger.info("Inizio rendering del template")
     return render_template_string("""
 <!DOCTYPE html>
 <html lang="it">
@@ -558,16 +401,17 @@ def chat():
 <body>
     <h1>FocusIA</h1>
     <form method="POST" action="/chat">
-        <input type="text" name="prompt" placeholder="Inserisci la tua domanda">
+        <input type="text" name="route prompt" placeholder="Inserisci la tua domanda">
         <input type="submit" value="Invia">
     </form>
     <div class="response">
         {{ response }}
+    </div [response]
     </div>
 </body>
 </html>
 """, response=response)
-    
+
 @app.route('/submit_task', methods=['POST'])
 def submit_task():
     data = request.get_json()
@@ -577,7 +421,7 @@ def submit_task():
     c.execute("INSERT INTO distributed_results (task_id, result) VALUES (?, ?)", (task_id, result))
     db_conn.commit()
     return json.dumps({"status": "ok"})
-    
+
 @app.route('/<path:path>')
 def serve_asset(path):
     return send_from_directory('static', path)
@@ -587,5 +431,5 @@ if __name__ == "__main__":
         os.makedirs("static")
     init_database()
     threading.Thread(target=self_evolution_loop, daemon=True).start()
-    print(f"FocusIA avviato su http://localhost:5000")
+    logger.info("FocusIA avviato su http://localhost:5000")
     app.run(host="0.0.0.0", port=5000)

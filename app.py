@@ -36,7 +36,7 @@ mem_info_before = process.memory_info()
 logger.info(f"Memoria usata prima del caricamento del modello: {mem_info_before.rss / 1024 / 1024:.2f} MB")
 
 logger.info("Caricamento del modello tiny-gpt2...")
-generator = pipeline('text-generation', model='sshleifer/tiny-gpt2')
+# generator = pipeline('text-generation', model='sshleifer/tiny-gpt2')
 logger.info("Modello caricato con successo")
 
 mem_info_after = process.memory_info()
@@ -149,11 +149,8 @@ def save_interaction(prompt, response, confidence, category, sentiment):
     db_conn.commit()
 
 # Generazione risposta
-def generate_model_response(prompt):
-    with torch.no_grad():  # Disabilita i gradienti per ridurre la memoria
-        response = generator(prompt, max_length=50, num_return_sequences=1)
-        return response[0]['generated_text']
-
+def generate_model_response(self, prompt):
+    return "Modello disabilitato per test."
 def enhance_response(prompt):
     base_response = generate_model_response(prompt)
     c = db_conn.cursor()

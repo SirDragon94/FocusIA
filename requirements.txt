@@ -9,3 +9,4 @@ googlesearch-python==1.2.4
 wikipedia==1.4.0
 numpy==1.24.3
 huggingface_hub==0.19.4
+psutil==5.9.5

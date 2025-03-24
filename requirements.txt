@@ -3,7 +3,6 @@ werkzeug==2.2.3
 gunicorn==20.1.0
 transformers==4.36.2
 torch==2.0.1 --extra-index-url https://download.pytorch.org/whl/cpu
-sentence-transformers==2.2.2
 beautifulsoup4==4.12.2
 requests==2.31.0
 googlesearch-python==1.2.4

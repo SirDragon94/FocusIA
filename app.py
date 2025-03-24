@@ -340,7 +340,9 @@ def index():
 </html>
 """)
 
-from init_db import FocusIA
+class FocusIA:
+    def chatbot_response(self, prompt):
+        return "Modello disabilitato per test."
 focusia = FocusIA()
 
 @app.route('/chat', methods=['POST'])

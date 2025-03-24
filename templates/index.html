@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FocusIA</title>
+</head>
+<body>
+    <h1>FocusIA</h1>
+    <form method="POST" action="/chat">
+        <input type="text" name="prompt" placeholder="Inserisci la tua domanda">
+        <button type="submit">Invia</button>
+    </form>
+    {% if response %}
+        <p>Risposta: {{ response }}</p>
+    {% endif %}
+</body>
+</html>

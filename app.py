@@ -6,7 +6,7 @@ Copyright (C) 2025 Xhulio Guranjaku
 import sqlite3
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
-from sentence_transformers import SentenceTransformer, util
+# from sentence_transformers import SentenceTransformer, util
 import random
 from collections import deque
 import os

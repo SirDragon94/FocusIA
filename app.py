@@ -67,7 +67,7 @@ def init_db():
 db_conn = init_db()
 
 # Configurazione base
-model_name = "distilgpt2"
+model_name = "sshleifer/tiny-gpt2"
 token = os.getenv("HUGGINGFACE_TOKEN")  # Token Hugging Face
 tokenizer = None
 model = None
@@ -174,9 +174,9 @@ def save_interaction(prompt, response, confidence, category, sentiment, embeddin
     conn.commit()
     conn.close()
 
-# Carica il modello distilgpt2 all'avvio per ottimizzare la memoria
-print("Caricamento del modello distilgpt2...")
-generator = pipeline('text-generation', model='distilgpt2')
+# Carica il modello tiny-gpt2 all'avvio per ottimizzare la memoria
+print("Caricamento del modello tiny-gpt2...")
+generator = pipeline('text-generation', model='sshleifer/tiny-gpt2')
 print("Modello caricato con successo")
 
 def generate_model_response(prompt):

@@ -5,14 +5,16 @@ Copyright (C) 2025 Xhulio Guranjaku
 
 import logging
 import sys
+import torch
+import psutil
 
 # Configura il logging
 logging.basicConfig(level=logging.INFO, stream=sys.stderr)
 logger = logging.getLogger(__name__)
 import sqlite3
 from transformers import AutoModelForCausalLM, AutoTokenizer
-import torch
 # from sentence_transformers import SentenceTransformer, util
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 import random
 from collections import deque
 import os
@@ -32,16 +34,17 @@ import concurrent.futures
 import hashlib
 
 def init_db():
-    conn = sqlite3.connect('brain.db')
+    conn = sqlite3.connect(':memory:')
     c = conn.cursor()
-    c.execute("CREATE TABLE IF NOT EXISTS brain_state (key TEXT PRIMARY KEY, value TEXT)")
+    c.execute("CREATE TABLE brain_state (key TEXT PRIMARY KEY, value TEXT)")
+    c.execute("CREATE TABLE distributed_results (task_id TEXT, result TEXT)")
     conn.commit()
-    conn.close()
+    return conn
    
     app = Flask(__name__)
 
 # Inizializza il database all'avvio
-init_db()
+db_conn = init_db()
 
 # Configurazione base
 model_name = "distilgpt2"
@@ -127,13 +130,10 @@ def initialize_manus_knowledge(cursor):
                        (item["topic"], item["content"], item["confidence"], "manus_base", embedding.tobytes(), sentiment))
 
 # Stato mentale con metacognizione
-def get_brain_state():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("CREATE TABLE IF NOT EXISTS brain_state (key TEXT, value TEXT)")
-    state = dict(c.fetchall())
-    conn.close()
-    return state
+def set_brain_state(key, value):
+    c = db_conn.cursor()
+    c.execute("INSERT OR REPLACE INTO brain_state (key, value) VALUES (?, ?)", (key, value))
+    db_conn.commit()
 
 def analyze_weaknesses():
     conn = sqlite3.connect(DB_FILE)
@@ -154,14 +154,15 @@ def save_interaction(prompt, response, confidence, category, sentiment, embeddin
     conn.commit()
     conn.close()
 
-# Generazione risposta con mini-modelli e apprendimento online
-def generate_model_response(prompt, context=""):
-    state = get_brain_state()
-    tokenizer, model = load_model()  # Carica il modello solo quando necessario
-    input_text = context + "\nUtente: " + prompt
-    input_ids = tokenizer.encode(input_text, return_tensors="pt")
-    output_ids = model.generate(input_ids, do_sample=True)
-    base_response = tokenizer.decode(output_ids[0], skip_special_tokens=True)
+# Carica il modello distilgpt2 all'avvio per ottimizzare la memoria
+print("Caricamento del modello distilgpt2...")
+generator = pipeline('text-generation', model='distilgpt2')
+print("Modello caricato con successo")
+
+def generate_model_response(prompt):
+    with torch.no_grad():  # Disabilita i gradienti per ridurre la memoria
+        response = generator(prompt, max_length=50, num_return_sequences=1)
+        return response[0]['generated_text']
 
     # Usa mini-modelli
     for mini_name, mini_model in mini_models.items():
@@ -481,6 +482,11 @@ def index():
 
 @app.route('/chat', methods=['POST'])
 def chat():
+    # Log dell'uso della memoria
+    process = psutil.Process()
+    mem_info = process.memory_info()
+    logger.error(f"Memoria usata: {mem_info.rss / 1024 / 1024:.2f} MB")
+    
     logger.error("Ricevuta richiesta POST a /chat")
     prompt = request.form.get('prompt', '')
     logger.error(f"Prompt ricevuto: {prompt}")
@@ -492,7 +498,7 @@ def chat():
         logger.error(f"Errore durante la generazione della risposta: {str(e)}", exc_info=True)
         raise
     logger.error("Inizio rendering del template")
-    return render_template_string("""
+    return render_template_string(...)
 <!DOCTYPE html>
 <html lang="it">
 <head>
@@ -559,13 +565,11 @@ def submit_task():
     data = request.get_json()
     task_id = data.get('task_id', '')
     result = data.get('result', '')
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
+    c = db_conn.cursor()
     c.execute("INSERT INTO distributed_results (task_id, result) VALUES (?, ?)", (task_id, result))
-    conn.commit()
-    conn.close()
+    db_conn.commit()
     return json.dumps({"status": "ok"})
-
+    
 @app.route('/<path:path>')
 def serve_asset(path):
     return send_from_directory('static', path)

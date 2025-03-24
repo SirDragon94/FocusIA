@@ -430,6 +430,58 @@ def self_evolution_loop():
         time.sleep(300)  # 5 minuti
 
 # Route Flask
+@app.route('/')
+def index():
+    return render_template_string("""
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FocusIA - AI ULTRA Evolutiva</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        h1 {
+            font-size: 2em;
+        }
+        form {
+            margin-top: 20px;
+        }
+        input[type="text"] {
+            width: 300px;
+            padding: 10px;
+            font-size: 1em;
+        }
+        input[type="submit"] {
+            padding: 10px 20px;
+            font-size: 1em;
+            margin-left: 10px;
+        }
+        .response {
+            margin-top: 20px;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <h1>FocusIA</h1>
+    <form method="POST" action="/chat">
+        <input type="text" name="prompt" placeholder="Inserisci la tua domanda">
+        <input type="submit" value="Invia">
+    </form>
+    <div class="response">
+        {% if response %}
+            {{ response }}
+        {% endif %}
+    </div>
+</body>
+</html>
+""")
+    
 @app.route('/chat', methods=['POST'])
 def chat():
     # Log dell'uso della memoria
@@ -495,86 +547,7 @@ def chat():
 </body>
 </html>
 """, response=response)
-@app.route('/chat', methods=['POST'])
-def chat():
-    # Log dell'uso della memoria
-    process = psutil.Process()
-    mem_info = process.memory_info()
-    logger.error(f"Memoria usata: {mem_info.rss / 1024 / 1024:.2f} MB")
     
-    logger.error("Ricevuta richiesta POST a /chat")
-    prompt = request.form.get('prompt', '')
-    logger.error(f"Prompt ricevuto: {prompt}")
-    try:
-        logger.error("Inizio generazione risposta")
-        response = generate_model_response(prompt)
-        logger.error(f"Risposta generata: {response}")
-    except Exception as e:
-        logger.error(f"Errore durante la generazione della risposta: {str(e)}", exc_info=True)
-        raise
-    logger.error("Inizio rendering del template")
-    return render_template_string(...)
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FocusIA - AI Ultra Evoluttiva</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin-top: 50px;
-        }
-        h1 {
-            font-size: 2em;
-        }
-        form {
-            margin-top: 20px;
-        }
-        input[type="text"] {
-            width: 300px;
-            padding: 10px;
-            font-size: 1em;
-        }
-        input[type="submit"] {
-            padding: 10px 20px;
-            font-size: 1em;
-            margin-left: 10px;
-        }
-        .response {
-            margin-top: 20px;
-            font-size: 1.2em;
-        }
-    </style>
-</head>
-<body>
-    <h1>FocusIA - AI Ultra Evoluttiva</h1>
-    <form method="POST" action="/chat">
-        <input type="text" name="prompt" placeholder="Inserisci la tua domanda" value="{{ input_text }}" required>
-        <input type="submit" value="Invia">
-    </form>
-    <div class="response">
-        <p>{{ response }}</p>
-    </div>
-</body>
-</html>
-""", input_text=prompt, response=response)
-
-@app.route('/feedback', methods=['POST'])
-def feedback():
-    data = request.get_json()
-    prompt = data.get('prompt', '')
-    interaction_time = data.get('time', 0)
-    confidence_boost = max(0, min(0.15, 1 / (interaction_time + 1)))
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("UPDATE knowledge SET confidence = MIN(1, confidence + ?) WHERE prompt = ?", (confidence_boost, prompt))
-    c.execute("UPDATE brain_state SET value = value + ? WHERE key = 'performance'", (confidence_boost / 2))
-    conn.commit()
-    conn.close()
-    return json.dumps({"status": "ok"})
-
 @app.route('/submit_task', methods=['POST'])
 def submit_task():
     data = request.get_json()

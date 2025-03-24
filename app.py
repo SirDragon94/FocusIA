@@ -340,6 +340,9 @@ def index():
 </html>
 """)
 
+from focusia_ultimate_evolving import FocusIA
+focusia = FocusIA()
+
 @app.route('/chat', methods=['POST'])
 def chat():
     app.logger.info("Inizio della richiesta POST a /chat")

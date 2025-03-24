@@ -1,12 +1,19 @@
 """
-FocusIA - Ultimate Self-Evolving AI
-Copyright (C) 2025 Xhulio Guranjaku
+FocusIA - ULTIMATE Self-Evolving AI
+Copyright (C) 2025 Xhulio Gurajaka
 """
 
 import logging
 import sys
 import torch
 import psutil
+import sqlite3
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+import random
+from collections import deque
+import os
+import threading
+import requests
 
 # Carica il modello distilgpt2 all'avvio per ottimizzare la memoria
 process = psutil.Process()

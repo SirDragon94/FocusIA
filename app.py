@@ -28,9 +28,9 @@ import hashlib
 # Configurazione base
 model_name = "distilgpt2"
 token = os.getenv("HUGGINGFACE_TOKEN")  # Token Hugging Face
-tokenizer = AutoTokenizer.from_pretrained(model_name, use_auth_token=token)
-model = AutoModelForCausalLM.from_pretrained(model_name, use_auth_token=token)
-similarity_model = SentenceTransformer('paraphrase-distilroberta-base-v2')
+tokenizer = AutoTokenizer.from_pretrained(model_name, token=token)
+model = AutoModelForCausalLM.from_pretrained(model_name, token=token)
+# similarity_model = SentenceTransformer('paraphrase-distilroberta-base-v2')
 context_memory = deque(maxlen=500)  # Memoria espansa
 wikipedia.set_lang("it")
 DB_FILE = "focusia_brain.db"

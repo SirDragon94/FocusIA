@@ -438,7 +438,7 @@ def index():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FocusIA - AI Ultra Evoluttiva</title>
+    <title>FocusIA - AI ULTRA Evolutiva</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -468,18 +468,19 @@ def index():
     </style>
 </head>
 <body>
-    <h1>FocusIA - AI Ultra Evoluttiva</h1>
+    <h1>FocusIA</h1>
     <form method="POST" action="/chat">
-        <input type="text" name="prompt" placeholder="Inserisci la tua domanda" value="{{ input_text|default('') }}" required>
+        <input type="text" name="prompt" placeholder="Inserisci la tua domanda">
         <input type="submit" value="Invia">
     </form>
     <div class="response">
-        <p>{{ response|default('') }}</p>
+        {% if response %}
+            {{ response }}
+        {% endif %}
     </div>
 </body>
 </html>
-""", input_text="", response="")
-
+""")
 @app.route('/chat', methods=['POST'])
 def chat():
     # Log dell'uso della memoria

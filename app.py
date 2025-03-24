@@ -4,8 +4,10 @@ Copyright (C) 2025 Xhulio Guranjaku
 """
 
 import logging
+import sys
+
 # Configura il logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, stream=sys.stderr)
 logger = logging.getLogger(__name__)
 import sqlite3
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -48,6 +50,11 @@ DB_FILE = "focusia_brain.db"
 CODE_FILE = "focusia_ultimate_evolving.py"
 app = Flask(__name__)
 
+# Gestore di errori globale
+@app.errorhandler(Exception)
+def handle_exception(e):
+    logger.error(f"Errore non gestito: {str(e)}", exc_info=True)
+    return "Internal Server Error", 500
 # Mini-modelli aggiuntivi
 mini_models = {}
 
@@ -462,8 +469,17 @@ def index():
 
 @app.route('/chat', methods=['POST'])
 def chat():
+    logger.error("Ricevuta richiesta POST a /chat")
     prompt = request.form.get('prompt', '')
-    response = generate_model_response(prompt)
+    logger.error(f"Prompt ricevuto: {prompt}")
+    try:
+        logger.error("Inizio generazione risposta")
+        response = generate_model_response(prompt)
+        logger.error(f"Risposta generata: {response}")
+    except Exception as e:
+        logger.error(f"Errore durante la generazione della risposta: {str(e)}", exc_info=True)
+        raise
+    logger.error("Inizio rendering del template")
     return render_template_string("""
 <!DOCTYPE html>
 <html lang="it">

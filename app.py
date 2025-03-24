@@ -340,7 +340,7 @@ def index():
 </html>
 """)
 
-from focusia_ultimate_evolving import FocusIA
+from init_db import FocusIA
 focusia = FocusIA()
 
 @app.route('/chat', methods=['POST'])

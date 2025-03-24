@@ -430,8 +430,24 @@ def self_evolution_loop():
         time.sleep(300)  # 5 minuti
 
 # Route Flask
-@app.route('/')
-def index():
+@app.route('/chat', methods=['POST'])
+def chat():
+    # Log dell'uso della memoria
+    process = psutil.Process()
+    mem_info = process.memory_info()
+    logger.error(f"Memoria usata: {mem_info.rss / 1024 / 1024:.2f} MB")
+    
+    logger.error("Ricevuta richiesta POST a /chat")
+    prompt = request.form.get('prompt', '')
+    logger.error(f"Prompt ricevuto: {prompt}")
+    try:
+        logger.error("Inizio generazione risposta")
+        response = generate_model_response(prompt)
+        logger.error(f"Risposta generata: {response}")
+    except Exception as e:
+        logger.error(f"Errore durante la generazione della risposta: {str(e)}", exc_info=True)
+        raise
+    logger.error("Inizio rendering del template")
     return render_template_string("""
 <!DOCTYPE html>
 <html lang="it">
@@ -474,13 +490,11 @@ def index():
         <input type="submit" value="Invia">
     </form>
     <div class="response">
-        {% if response %}
-            {{ response }}
-        {% endif %}
+        {{ response }}
     </div>
 </body>
 </html>
-""")
+""", response=response)
 @app.route('/chat', methods=['POST'])
 def chat():
     # Log dell'uso della memoria

@@ -28,8 +28,15 @@ import hashlib
 # Configurazione base
 model_name = "distilgpt2"
 token = os.getenv("HUGGINGFACE_TOKEN")  # Token Hugging Face
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForCausalLM.from_pretrained(model_name)
+tokenizer = None
+model = None
+
+def load_model():
+    global tokenizer, model
+    if tokenizer is None or model is None:
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        model = AutoModelForCausalLM.from_pretrained(model_name)
+    return tokenizer, model
 # similarity_model = SentenceTransformer('paraphrase-distilroberta-base-v2')
 context_memory = deque(maxlen=500)  # Memoria espansa
 wikipedia.set_lang("it")
@@ -127,17 +134,18 @@ def save_interaction(prompt, response, confidence, category, sentiment, embeddin
 # Generazione risposta con mini-modelli e apprendimento online
 def generate_model_response(prompt, context=""):
     state = get_brain_state()
-    input_text = context + "\nUtente: " + prompt + tokenizer.eos_token
+    tokenizer, model = load_model()  # Carica il modello solo quando necessario
+    input_text = context + "\nUtente: " + prompt
     input_ids = tokenizer.encode(input_text, return_tensors="pt")
-    output_ids = model.generate(input_ids, max_length=200, pad_token_id=tokenizer.eos_token_id, 
-                                do_sample=True, top_k=50, top_p=0.95, temperature=0.9 - (state["age"] * 0.02))
-    base_response = tokenizer.decode(output_ids[0][input_ids.shape[1]:], skip_special_tokens=True).strip()
-    
+    output_ids = model.generate(input_ids, do_sample=True)
+    base_response = tokenizer.decode(output_ids[0], skip_special_tokens=True)
+
     # Usa mini-modelli
     for mini_name, mini_model in mini_models.items():
         mini_input_ids = tokenizer.encode(prompt, return_tensors="pt")
-        mini_output = mini_model.generate(mini_input_ids, max_length=50)
-        base_response += f" ({mini_name}: {tokenizer.decode(mini_output[0], skip_special_tokens=True)})"
+        mini_output = mini_model.generate(mini_input_ids)
+        base_response += f" ({mini_name}): "
+        base_response += tokenizer.decode(mini_output[0], skip_special_tokens=True)
     return base_response
 
 def enhance_response(prompt):

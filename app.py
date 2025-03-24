@@ -409,43 +409,104 @@ def self_evolution_loop():
 @app.route('/')
 def index():
     return render_template_string("""
-    <!DOCTYPE html>
-    <html>
-    <head><title>FocusIA</title></head>
-    <body>
-        <h1>FocusIA - AI Ultra Evolutiva</h1>
-        <textarea id="prompt" rows="4" cols="50"></textarea><br>
-        <button onclick="sendPrompt()">Invia</button>
-        <div id="response"></div>
-        <script>
-        async function sendPrompt() {
-            const startTime = Date.now();
-            const prompt = document.getElementById('prompt').value;
-            const response = await fetch('/chat', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({prompt: prompt})
-            });
-            const data = await response.json();
-            document.getElementById('response').innerHTML = data.response;
-            const interactionTime = (Date.now() - startTime) / 1000;
-            fetch('/feedback', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({prompt: prompt, time: interactionTime})
-            });
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FocusIA - AI Ultra Evoluttiva</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
         }
-        </script>
-    </body>
-    </html>
-    """)
+        h1 {
+            font-size: 2em;
+        }
+        form {
+            margin-top: 20px;
+        }
+        input[type="text"] {
+            width: 300px;
+            padding: 10px;
+            font-size: 1em;
+        }
+        input[type="submit"] {
+            padding: 10px 20px;
+            font-size: 1em;
+            margin-left: 10px;
+        }
+        .response {
+            margin-top: 20px;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <h1>FocusIA - AI Ultra Evoluttiva</h1>
+    <form method="POST" action="/chat">
+        <input type="text" name="prompt" placeholder="Inserisci la tua domanda" value="{{ input_text|default('') }}" required>
+        <input type="submit" value="Invia">
+    </form>
+    <div class="response">
+        <p>{{ response|default('') }}</p>
+    </div>
+</body>
+</html>
+""", input_text="", response="")
 
 @app.route('/chat', methods=['POST'])
 def chat():
-    data = request.get_json()
-    prompt = data.get('prompt', '')
-    response, _ = chatbot_response(prompt)
-    return json.dumps({"response": response})
+    prompt = request.form.get('prompt', '')
+    response = generate_model_response(prompt)
+    return render_template_string("""
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FocusIA - AI Ultra Evoluttiva</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        h1 {
+            font-size: 2em;
+        }
+        form {
+            margin-top: 20px;
+        }
+        input[type="text"] {
+            width: 300px;
+            padding: 10px;
+            font-size: 1em;
+        }
+        input[type="submit"] {
+            padding: 10px 20px;
+            font-size: 1em;
+            margin-left: 10px;
+        }
+        .response {
+            margin-top: 20px;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <h1>FocusIA - AI Ultra Evoluttiva</h1>
+    <form method="POST" action="/chat">
+        <input type="text" name="prompt" placeholder="Inserisci la tua domanda" value="{{ input_text }}" required>
+        <input type="submit" value="Invia">
+    </form>
+    <div class="response">
+        <p>{{ response }}</p>
+    </div>
+</body>
+</html>
+""", input_text=prompt, response=response)
 
 @app.route('/feedback', methods=['POST'])
 def feedback():

@@ -20,7 +20,6 @@ process = psutil.Process()
 mem_info_after_imports = process.memory_info()
 print(f"Memoria usata dopo gli import: {mem_info_after_imports.rss / 1024 / 1024:.2f} MB")
 
-# Carica il modello distilgpt2 all'avvio per ottimizzare la memoria
 # Carica il modello tiny-gpt2 all'avvio per ottimizzare la memoria
 mem_info_before = process.memory_info()
 print(f"Memoria usata prima del caricamento del modello: {mem_info_before.rss / 1024 / 1024:.2f} MB")

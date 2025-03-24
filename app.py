@@ -15,8 +15,12 @@ import os
 import threading
 import requests
 
-# Carica il modello distilgpt2 all'avvio per ottimizzare la memoria
+# Log della memoria dopo gli import
 process = psutil.Process()
+mem_info_after_imports = process.memory_info()
+print(f"Memoria usata dopo gli import: {mem_info_after_imports.rss / 1024 / 1024:.2f} MB")
+
+# Carica il modello distilgpt2 all'avvio per ottimizzare la memoria
 mem_info_before = process.memory_info()
 print(f"Memoria usata prima del caricamento del modello: {mem_info_before.rss / 1024 / 1024:.2f} MB")
 

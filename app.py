@@ -3,6 +3,10 @@ FocusIA - Ultimate Self-Evolving AI
 Copyright (C) 2025 Xhulio Guranjaku
 """
 
+import logging
+# Configura il logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 import sqlite3
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
@@ -458,8 +462,17 @@ def index():
 
 @app.route('/chat', methods=['POST'])
 def chat():
+    logger.info("Ricevuta richiesta POST a /chat")
     prompt = request.form.get('prompt', '')
-    response = generate_model_response(prompt)
+    logger.info(f"Prompt ricevuto: {prompt}")
+    try:
+        logger.info("Inizio generazione risposta")
+        response = generate_model_response(prompt)
+        logger.info(f"Risposta generata: {response}")
+    except Exception as e:
+        logger.error(f"Errore durante la generazione della risposta: {str(e)}")
+        raise
+    logger.info("Inizio rendering del template")
     return render_template_string("""
 <!DOCTYPE html>
 <html lang="it">

@@ -3,6 +3,7 @@ FocusIA - ULTIMATE Self-Evolving AI
 Copyright (C) 2025 Xhulio Gurajaka
 """
 
+# Forzatura deploy per aggiornare il modello - 24 Mar 2025
 import logging
 import sys
 import torch

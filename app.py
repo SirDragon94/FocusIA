@@ -8,9 +8,17 @@ import sys
 import torch
 import psutil
 
-# Configura il logging
-logging.basicConfig(level=logging.INFO, stream=sys.stderr)
-logger = logging.getLogger(__name__)
+# Carica il modello distilgpt2 all'avvio per ottimizzare la memoria
+process = psutil.Process()
+mem_info_before = process.memory_info()
+print(f"Memoria usata prima del caricamento del modello: {mem_info_before.rss / 1024 / 1024:.2f} MB")
+
+print("Caricamento del modello distilgpt2...")
+generator = pipeline('text-generation', model='distilgpt2')
+print("Modello caricato con successo")
+
+mem_info_after = process.memory_info()
+print(f"Memoria usata dopo il caricamento del modello: {mem_info_after.rss / 1024 / 1024:.2f} MB")
 import sqlite3
 from transformers import AutoModelForCausalLM, AutoTokenizer
 # from sentence_transformers import SentenceTransformer, util

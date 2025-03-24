@@ -31,6 +31,18 @@ import json
 import concurrent.futures
 import hashlib
 
+def init_db():
+    conn = sqlite3.connect('brain.db')
+    c = conn.cursor()
+    c.execute("CREATE TABLE IF NOT EXISTS brain_state (key TEXT PRIMARY KEY, value TEXT)")
+    conn.commit()
+    conn.close()
+   
+    app = Flask(__name__)
+
+# Inizializza il database all'avvio
+init_db()
+
 # Configurazione base
 model_name = "distilgpt2"
 token = os.getenv("HUGGINGFACE_TOKEN")  # Token Hugging Face
@@ -118,7 +130,7 @@ def initialize_manus_knowledge(cursor):
 def get_brain_state():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("SELECT key, value FROM brain_state")
+    c.execute("CREATE TABLE IF NOT EXISTS brain_state (key TEXT, value TEXT)")
     state = dict(c.fetchall())
     conn.close()
     return state

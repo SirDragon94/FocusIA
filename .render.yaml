@@ -1,0 +1,5 @@
+render.yaml
+services:
+
+type: web name: FocusIA env: python plan: free buildCommand: "pip install -r requirements.txt" startCommand: "python app.py" envVars:
+key: HUGGINGFACE_TOKEN sync: false # Inserirai il valore manualmente su Render

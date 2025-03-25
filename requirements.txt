@@ -5,7 +5,7 @@ torch==2.2.1
 requests==2.31.0
 beautifulsoup4==4.12.3
 googlesearch-python==1.2.4
-wikipedia-api==0.6.0
+wikipedia==1.4.0
 numpy==1.26.4
 schedule==1.2.1
 gunicorn==22.0.0

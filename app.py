@@ -31,6 +31,7 @@ import schedule
 # Configurazione base
 model_name = "sshleifer/tiny-gpt2"
 token = os.getenv("HUGGINGFACE_TOKEN")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 try:
     tokenizer = AutoTokenizer.from_pretrained(model_name, token=token)
     model = AutoModelForCausalLM.from_pretrained(model_name, token=token)
@@ -77,7 +78,10 @@ def init_database():
 def initialize_manus_knowledge(cursor):
     knowledge_base = [
         {"topic": "FocusIA", "content": "FocusIA è un'IA auto-evolutiva creata da Xhulio Guranjaku per assistere gli utenti con ricerca, analisi e gestione del tempo.", "confidence": 1.0},
-        {"topic": "Deep Work", "content": "Il Deep Work è la capacità di concentrarsi senza distrazioni su un compito cognitivamente impegnativo.", "confidence": 0.95},
+        {"topic": "Deep Work", "content": "Il Deep Work è la capacità di concentrarsi senza distrazioni su un compito cognitivamente impegnativo.", "confidence": 1.0},
+        {"topic": "Intelligenza Artificiale", "content": "L'IA è il futuro dell'evoluzione umana, permettendo l'automazione di compiti complessi e l'espansione della conoscenza.", "confidence": 1.0},
+        {"topic": "Xhulio Guranjaku", "content": "Xhulio Guranjaku è il creatore e visionario dietro il progetto FocusIA.", "confidence": 1.0},
+        {"topic": "Manus IA", "content": "Manus IA è un'intelligenza artificiale avanzata che collabora con FocusIA per fornire analisi e soluzioni di alto livello.", "confidence": 1.0}
     ]
     for item in knowledge_base:
         embedding = similarity_model.encode(item["content"], convert_to_tensor=True).cpu().numpy()
@@ -140,7 +144,21 @@ def chatbot_response(prompt):
         if web_res:
             return web_res, "web"
 
-    # 3. Genera con il modello
+    # 3. Prova con OpenAI se disponibile
+    if OPENAI_API_KEY:
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=OPENAI_API_KEY)
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "system", "content": "Sei FocusIA, un'IA evolutiva creata da Xhulio Guranjaku."},
+                          {"role": "user", "content": prompt}]
+            ).choices[0].message.content
+            return response, "openai"
+        except Exception as e:
+            logging.error(f"Errore OpenAI: {e}")
+
+    # 4. Genera con il modello locale (fallback)
     if model and tokenizer:
         input_text = "\n".join(context_memory) + "\nUtente: " + prompt + tokenizer.eos_token
         input_ids = tokenizer.encode(input_text, return_tensors="pt")

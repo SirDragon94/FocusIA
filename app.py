@@ -140,11 +140,33 @@ def update_rag_index(new_chunks):
     knowledge_chunks.extend(new_chunks)
 
 # Retrieve RAG
-def retrieve_relevant_chunks(query, top_k=2):  # Limite basso per mem
-    if index is None or index.ntotal == 0: return []
-    query_emb = get_embedding(query)
-    _, indices = index.search(np.array([query_emb]), top_k)
-    return [knowledge_chunks[i] for i in indices[0] if i < len(knowledge_chunks)]
+def retrieve_relevant_chunks(query, k=3):
+    try:
+        index = get_faiss_index()  # ← CHIAMATA corretta
+        if index is None or index.ntotal == 0:
+            return []
+
+        query_emb = get_embedding(query).reshape(1, -1)
+        distances, indices = index.search(query_emb, k)
+
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        chunks = []
+        for idx in indices[0]:
+            if idx < 0:
+                continue
+            row = c.execute(
+                "SELECT content FROM knowledge WHERE id=?",
+                (int(idx),)
+            ).fetchone()
+            if row:
+                chunks.append(row[0])
+        conn.close()
+        return chunks
+    except Exception as e:
+        print("Errore retrieve_relevant_chunks:", e)
+        return []
+
 
 # Save interaction
 def save_interaction(prompt, response, confidence, category, sentiment, embedding):

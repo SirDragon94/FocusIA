@@ -46,6 +46,7 @@ UPLOAD_FOLDER = 'uploads'
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # Limite upload per RAM
+init_database()
 context_memory = deque(maxlen=10)  # Memoria leggera
 context_lock = threading.Lock()
 index = None  # FAISS index

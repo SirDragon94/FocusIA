@@ -46,7 +46,6 @@ UPLOAD_FOLDER = 'uploads'
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # Limite upload per RAM
-init_database()
 context_memory = deque(maxlen=10)  # Memoria leggera
 context_lock = threading.Lock()
 index = None  # FAISS index
@@ -59,7 +58,9 @@ if not os.path.exists(UPLOAD_FOLDER):
 # Logging
 logging.basicConfig(level=logging.INFO)
 
-# Inizializzazione database (merge: knowledge + brain_state + feedback)
+# =========================
+# Funzione init_database() 
+# =========================
 def init_database():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -84,18 +85,14 @@ def init_database():
     base_prompt = "Sei FocusIA, un'IA evolutiva creata da Xhulio Guranjaku. Rispondi in modo professionale e utile."
     c.execute("INSERT OR IGNORE INTO prompts (system_prompt, score) VALUES (?, 0.0)", (base_prompt,))
     
-    # Conoscenza base
-    base_knowledge = [
-        ("FocusIA", "FocusIA è un'IA evolutiva creata da Xhulio Guranjaku.", 1.0, "base"),
-        ("Deep Work", "Il Deep Work è la chiave per la produttività massima.", 1.0, "base")
-    ]
-    for p, r, conf, cat in base_knowledge:
-        embedding = get_embedding(p)  # Light embedding
-        c.execute("INSERT OR IGNORE INTO knowledge (prompt, response, confidence, category, embedding, sentiment) VALUES (?, ?, ?, ?, ?, 0.0)", 
-                  (p, r, conf, cat, embedding.tobytes()))
-    
     conn.commit()
     conn.close()
+
+# =========================
+# CHIAMATA CORRETTA
+# =========================
+# Deve essere DOPO la funzione, così non da NameError
+init_database()
 
 # Brain state functions (dal secondo codice)
 def update_brain_state(age_inc=0.1, curiosity_adj=0, empathy_adj=0, clusters_adj=0):

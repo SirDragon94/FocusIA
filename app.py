@@ -540,14 +540,20 @@ def index():
 def chat():
     data = request.get_json()
     prompt = data.get('prompt', '')
-    response = chatbot_response(prompt)
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("SELECT id FROM knowledge WHERE prompt = ? ORDER BY id DESC LIMIT 1", (prompt,))
-    interaction_id = c.fetchone()[0]
-    conn.close()
-    return jsonify({"response": response, "interaction_id": interaction_id})
-
+    print(f"DEBUG: Ricevuto prompt: {prompt}")  # <--- aggiungi
+    try:
+        response = chatbot_response(prompt)
+        print(f"DEBUG: Generata risposta: {response[:100]}...")  # <--- aggiungi
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("SELECT id FROM knowledge WHERE prompt = ? ORDER BY id DESC LIMIT 1", (prompt,))
+        row = c.fetchone()
+        interaction_id = row[0] if row else None
+        conn.close()
+        return jsonify({"response": response, "interaction_id": interaction_id})
+    except Exception as e:
+        print(f"ERRORE in /chat: {str(e)}")  # <--- aggiungi
+        return jsonify({"response": "Errore interno, controlla log.", "interaction_id": None}), 500
 @app.route('/feedback', methods=['POST'])
 def feedback():
     data = request.get_json()

@@ -1,4 +1,11 @@
 services:
-
-type: web name: FocusIA env: python plan: free buildCommand: "pip install -r requirements.txt" startCommand: "gunicorn app:app" envVars:
-key: HUGGINGFACE_TOKEN sync: false
+  - type: web
+    name: focusia
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.3

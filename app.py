@@ -597,5 +597,6 @@ def get_tasks():
     return jsonify(tasks)
 
 if __name__ == "__main__":
-    init_database()
+    # Inizializza DB all'avvio del modulo (funziona anche con gunicorn)
+    init_database()  # Crea tabelle e dati base al primo avvio
     app.run(host="0.0.0.0", port=5000)

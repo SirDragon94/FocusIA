@@ -1,6 +1,7 @@
-# FocusIA - Ultimate Self-Evolving AI
+# FocusIA - Render Free Optimized
 
-FocusIA è un'intelligenza artificiale auto-evolvente progettata per apprendere, migliorarsi e interagire con gli utenti in modo dinamico.
+Assistente AI evolutivo leggero per Render.com free tier.
+Usa API esterne per generazione testo e embedding.
 
 ## Nuove Funzionalità (Versione Conclusiva)
 

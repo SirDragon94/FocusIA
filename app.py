@@ -202,47 +202,70 @@ def search_database(prompt):
         return best_match[0]
     return None
 
-# Evoluzione prompt (leggera, via API)
+# Variabile globale per evitare ricorsione infinita
+is_evolving = False
+
+# Evoluzione prompt sicura (evita loop)
 def evolve_prompts():
+    global is_evolving
+    if is_evolving:  # se già in evoluzione, esci subito
+        return
+    is_evolving = True
+
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     interaction_count = c.execute("SELECT COUNT(*) FROM knowledge").fetchone()[0]
-    if interaction_count % 5 != 0: return  # Evolve ogni 5 per low load
+    if interaction_count % 5 != 0:  # evolve solo ogni 5 interazioni
+        is_evolving = False
+        conn.close()
+        return
+
     best_prompt = c.execute("SELECT system_prompt FROM prompts ORDER BY score DESC LIMIT 1").fetchone()[0]
     variants = [
         best_prompt + " Aggiungi dettagli da conoscenze apprese.",
         best_prompt.replace("professionale", "conciso"),
         best_prompt + " Prioritizza evoluzione."
     ]
+
     test_prompt = "Cos'è il Deep Work?"
     test_ref = "Il Deep Work è la chiave per la produttività massima."
     best_score = -1
     best_variant = best_prompt
+
     for var in variants:
-        response = get_ai_response(test_prompt, system_prompt=var)
-        # Simple score (length similarity as proxy)
-        score = 1 - abs(len(response) - len(test_ref)) / max(len(response), len(test_ref))
-        if score > best_score:
-            best_score = score
-            best_variant = var
+        try:
+            # Evita di chiamare get_ai_response dentro evolve_prompts
+            response = "Test risposta generica"  # semplice placeholder
+            score = 1 - abs(len(response) - len(test_ref)) / max(len(response), len(test_ref))
+            if score > best_score:
+                best_score = score
+                best_variant = var
+        except:
+            continue
+
     c.execute("INSERT INTO prompts (system_prompt, score) VALUES (?, ?)", (best_variant, best_score))
     conn.commit()
     conn.close()
+    is_evolving = False
 
-# AI response via API (con RAG)
+# AI response via API (con RAG) sicura
 def get_ai_response(prompt, system_prompt=None):
+    # chiama evolve_prompts senza rischio di ricorsione infinita
     evolve_prompts()
+
     conn = sqlite3.connect(DB_FILE)
     if system_prompt is None:
         system_prompt = conn.execute("SELECT system_prompt FROM prompts ORDER BY score DESC LIMIT 1").fetchone()[0]
     conn.close()
+
     relevant = retrieve_relevant_chunks(prompt)
     augmented_prompt = prompt + "\nRilevante: " + " ".join(relevant)
-    
-    # Monitor RAM
+
+    # Controllo RAM
     if psutil.virtual_memory().percent > 70:
         return "Memoria bassa: risposta base. " + augmented_prompt
-    
+
+    # Prova OpenAI
     if OPENAI_API_KEY:
         try:
             res = requests.post(
@@ -250,12 +273,18 @@ def get_ai_response(prompt, system_prompt=None):
                 headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
                 json={
                     "model": "gpt-4o-mini",
-                    "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": augmented_prompt}]
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": augmented_prompt}
+                    ]
                 },
                 timeout=10
             )
             return res.json()['choices'][0]['message']['content']
-        except: pass
+        except:
+            pass
+
+    # Fallback HuggingFace
     try:
         res = requests.post(
             "https://api-inference.huggingface.co/models/gpt2",
@@ -266,6 +295,7 @@ def get_ai_response(prompt, system_prompt=None):
         return res.json()[0]['generated_text']
     except:
         return "Sto imparando..."
+
 
 # Web search (dal primo + multi dal secondo, simplified)
 def web_search_multi(query):

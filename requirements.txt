@@ -1,8 +1,11 @@
-flask==2.3.3
-requests==2.31.0
+flask==3.0.3
+requests==2.32.3
 beautifulsoup4==4.12.3
-googlesearch-python==1.2.4
+googlesearch-python==1.2.3
 wikipedia==1.4.0
-pypdf==4.1.0
-gunicorn==22.0.0
 numpy==1.26.4
+pypdf==5.1.0
+faiss-cpu==1.8.0
+psutil==6.1.0
+scikit-learn==1.5.2
+gunicorn==23.0.0

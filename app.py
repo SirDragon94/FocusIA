@@ -583,5 +583,5 @@ def get_tasks():
     except:
         return jsonify([])
 
- port=5000)hth
-
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)

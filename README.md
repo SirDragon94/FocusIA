@@ -1,15 +1,17 @@
-# FocusIA - Render Free Optimized
+# FocusIA - Render + Supabase
 
-Assistente AI evolutivo leggero per Render.com free tier.
-Usa API esterne per generazione testo e embedding.
+Assistente AI evolutivo leggero deployato su Render free tier con backend Supabase.
 
-## Nuove Funzionalità (Versione Conclusiva)
+- Frontend: Dashboard con chat, timer Pomodoro, task, upload PDF
+- Backend: Flask + Supabase (database Postgres)
+- AI: API OpenAI + Hugging Face fallback
+- Evoluzione: Prompt evolution, feedback loop, curiosity learning
 
-- **Analisi PDF**: Carica e analizza documenti PDF per espandere la conoscenza dell'IA.
-- **Ricerca Web Integrata**: Capacità di consultare Wikipedia e il Web per risposte aggiornate.
-- **Gestione Tempo & Deep Work**: Dashboard dedicata con lista task e timer per sessioni di lavoro profondo.
-- **Interfaccia Dashboard**: Nuova UI moderna con navigazione a schede.
-- **Auto-Evoluzione**: Sistema di apprendimento continuo basato sulle interazioni.
+Env vars necessarie:
+- OPENAI_API_KEY
+- HUGGINGFACE_TOKEN
+- SUPABASE_URL
+- SUPABASE_KEY
 
 ## Requisiti
 

@@ -112,15 +112,30 @@ def update_brain_state(age_inc=0.1, curiosity_adj=0, empathy_adj=0, clusters_adj
     if not supabase:
         return
     try:
-        supabase.table("brain_state").upsert({"key": "age", "value": supabase.table("brain_state").select("value").eq("key", "age").execute().data[0]["value"] + age_inc}).execute()
+        # Age
+        age_res = supabase.table("brain_state").select("value").eq("key", "age").execute()
+        age_val = age_res.data[0]["value"] if age_res.data else 0.0
+        supabase.table("brain_state").upsert({"key": "age", "value": age_val + age_inc}).execute()
+
+        # Curiosity
         if curiosity_adj != 0:
-            supabase.table("brain_state").update({"value": supabase.table("brain_state").select("value").eq("key", "curiosity").execute().data[0]["value"] + curiosity_adj}).eq("key", "curiosity").execute()
+            cur_res = supabase.table("brain_state").select("value").eq("key", "curiosity").execute()
+            cur_val = cur_res.data[0]["value"] if cur_res.data else 0.8
+            supabase.table("brain_state").update({"value": max(0, min(1, cur_val + curiosity_adj))}).eq("key", "curiosity").execute()
+
+        # Empathy
         if empathy_adj != 0:
-            supabase.table("brain_state").update({"value": supabase.table("brain_state").select("value").eq("key", "empathy").execute().data[0]["value"] + empathy_adj}).eq("key", "empathy").execute()
+            emp_res = supabase.table("brain_state").select("value").eq("key", "empathy").execute()
+            emp_val = emp_res.data[0]["value"] if emp_res.data else 0.5
+            supabase.table("brain_state").update({"value": max(0, min(1, emp_val + empathy_adj))}).eq("key", "empathy").execute()
+
+        # Clusters
         if clusters_adj != 0:
-            supabase.table("brain_state").update({"value": supabase.table("brain_state").select("value").eq("key", "knowledge_clusters").execute().data[0]["value"] + clusters_adj}).eq("key", "knowledge_clusters").execute()
+            clu_res = supabase.table("brain_state").select("value").eq("key", "knowledge_clusters").execute()
+            clu_val = clu_res.data[0]["value"] if clu_res.data else 3.0
+            supabase.table("brain_state").update({"value": clu_val + clusters_adj}).eq("key", "knowledge_clusters").execute()
     except Exception as e:
-        logging.error(f"Errore update_brain_state: {e}")
+        logging.error(f"Errore update_brain_state: {str(e)}")
 
 # Get brain_state
 def get_brain_state():

@@ -79,14 +79,14 @@ def update_rag_index(new_chunks):
 
 # Retrieve RAG
 def retrieve_relevant_chunks(query, top_k=2):
-    if index is None or index.ntotal == 0:
+    if index is None or not hasattr(index, 'ntotal') or index.ntotal == 0:
         return []
     try:
         query_emb = get_embedding(query)
         D, I = index.search(np.array([query_emb]), top_k)
         return [knowledge_chunks[i] for i in I[0] if i < len(knowledge_chunks)]
     except Exception as e:
-        logging.error(f"Errore RAG retrieval: {e}")
+        logging.error(f"Errore retrieval RAG: {e}")
         return []
 
 # Save interaction in knowledge

@@ -161,24 +161,25 @@ def search_database(prompt):
         best_score = -1
         for item in interactions:
             past_emb_str = item["embedding"]
-if past_emb_str and past_emb_str.strip():
-    try:
-        past_emb = np.array(json.loads(past_emb_str))
-    except json.JSONDecodeError:
-        past_emb = np.zeros(384)
-else:
-    past_emb = np.zeros(384)
+            if past_emb_str and past_emb_str.strip():
+                try:
+                    past_emb = np.array(json.loads(past_emb_str))
+                except json.JSONDecodeError:
+                    past_emb = np.zeros(384)
+            else:
+                past_emb = np.zeros(384)
             similarity = np.dot(prompt_emb, past_emb) / (np.linalg.norm(prompt_emb) * np.linalg.norm(past_emb) + 1e-8)
             score = (similarity * 0.7) + (item["confidence"] * 0.2) + (min(item["usage_count"], 10) * 0.1 / 10)
             if score > best_score and similarity > 0.6:
                 best_score = score
                 best_match = (item["response"], item["id"])
         if best_match:
-            supabase.table("knowledge").update({"usage_count": supabase.table("knowledge").select("usage_count").eq("id", best_match[1]).execute().data[0]["usage_count"] + 1}).eq("id", best_match[1]).execute()
+            current_count = supabase.table("knowledge").select("usage_count").eq("id", best_match[1]).execute().data[0]["usage_count"]
+            supabase.table("knowledge").update({"usage_count": current_count + 1}).eq("id", best_match[1]).execute()
             return best_match[0]
         return None
     except Exception as e:
-        logging.error(f"Errore search_database: {e}")
+        logging.error(f"Errore search_database: {str(e)}")
         return None
 
 # Evolve prompts

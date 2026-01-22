@@ -100,7 +100,7 @@ def save_interaction(prompt, response, confidence, category, sentiment, embeddin
         "category": category,
         "usage_count": 0,
         "sentiment": sentiment,
-        "embedding": embedding.tolist()  # Converti array in list per JSON
+        "embedding": json.dumps(embedding.tolist()) if embedding is not None else None
     }
     try:
         supabase.table("knowledge").insert(data).execute()
@@ -160,7 +160,7 @@ def search_database(prompt):
         best_match = None
         best_score = -1
         for item in interactions:
-            past_emb = np.array(item["embedding"]) if item["embedding"] else np.zeros(384)
+            past_emb = np.array(json.loads(item["embedding"])) if item["embedding"] else np.zeros(384)
             similarity = np.dot(prompt_emb, past_emb) / (np.linalg.norm(prompt_emb) * np.linalg.norm(past_emb) + 1e-8)
             score = (similarity * 0.7) + (item["confidence"] * 0.2) + (min(item["usage_count"], 10) * 0.1 / 10)
             if score > best_score and similarity > 0.6:

@@ -100,7 +100,7 @@ def save_interaction(prompt, response, confidence, category, sentiment, embeddin
         "category": category,
         "usage_count": 0,
         "sentiment": sentiment,
-        "embedding": json.dumps(embedding.tolist()) if embedding is not None else None
+        "embedding": json.dumps(embedding.tolist()) if embedding is not None and embedding.any() else None
     }
     try:
         supabase.table("knowledge").insert(data).execute()
@@ -160,7 +160,14 @@ def search_database(prompt):
         best_match = None
         best_score = -1
         for item in interactions:
-            past_emb = np.array(json.loads(item["embedding"])) if item["embedding"] else np.zeros(384)
+            past_emb_str = item["embedding"]
+if past_emb_str and past_emb_str.strip():
+    try:
+        past_emb = np.array(json.loads(past_emb_str))
+    except json.JSONDecodeError:
+        past_emb = np.zeros(384)
+else:
+    past_emb = np.zeros(384)
             similarity = np.dot(prompt_emb, past_emb) / (np.linalg.norm(prompt_emb) * np.linalg.norm(past_emb) + 1e-8)
             score = (similarity * 0.7) + (item["confidence"] * 0.2) + (min(item["usage_count"], 10) * 0.1 / 10)
             if score > best_score and similarity > 0.6:
@@ -222,14 +229,15 @@ def get_ai_response(prompt, system_prompt=None):
             logging.error(f"Errore OpenAI: {e}")
     try:
         res = requests.post(
-            "https://api-inference.huggingface.co/models/gpt2",
+            "https://api-inference.huggingface.co/models/distilgpt2",  # Modello cambiato per stabilità
             headers={"Authorization": f"Bearer {HUGGINGFACE_TOKEN}"},
             json={"inputs": augmented_prompt},
-            timeout=15
+            timeout=30
         )
+        logging.info(f"HF status: {res.status_code}, text: {res.text[:200]}")
         return res.json()[0]['generated_text']
     except Exception as e:
-        logging.error(f"Errore HF fallback: {e}")
+        logging.error(f"Errore HF fallback dettagliato: {str(e)}")
         return "Sto imparando... chiedimi di cercare o carica un PDF!"
 
 # Web search

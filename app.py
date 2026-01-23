@@ -215,32 +215,39 @@ def get_ai_response(prompt, system_prompt=None):
     if psutil.virtual_memory().percent > 70:
         return "Memoria bassa: risposta base. " + augmented_prompt
 
-    if OPENAI_API_KEY:
+        # Fallback Groq (se hai la key)
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+    if GROQ_API_KEY:
         try:
             res = requests.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
                 json={
-                    "model": "gpt-4o-mini",
-                    "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": augmented_prompt}]
+                    "model": "llama-3.1-8b-instant",
+                    "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": augmented_prompt}],
+                    "temperature": 0.7,
+                    "max_tokens": 200
                 },
                 timeout=15
             )
+            logging.info(f"Groq status: {res.status_code}, text: {res.text[:200]}")
             return res.json()['choices'][0]['message']['content']
         except Exception as e:
-            logging.error(f"Errore OpenAI: {e}")
+            logging.error(f"Errore Groq: {str(e)}")
+
+    # Vecchio fallback HF (opzionale, commenta se vuoi)
     try:
-    res = requests.post(
-        "https://router.huggingface.co/models/distilgpt2",
-        headers={"Authorization": f"Bearer {HUGGINGFACE_TOKEN}"},
-        json={"inputs": augmented_prompt},
-        timeout=30
-    )
-    logging.info(f"HF status: {res.status_code}, text: {res.text[:200]}")
-    return res.json()[0]['generated_text']
-except Exception as e:
-    logging.error(f"Errore HF fallback dettagliato: {str(e)}")
-    return "Sto imparando... chiedimi di cercare o carica un PDF!"
+        res = requests.post(
+            "https://router.huggingface.co/models/distilgpt2",
+            headers={"Authorization": f"Bearer {HUGGINGFACE_TOKEN}"},
+            json={"inputs": augmented_prompt},
+            timeout=30
+        )
+        logging.info(f"HF status: {res.status_code}, text: {res.text[:200]}")
+        return res.json()[0]['generated_text']
+    except Exception as e:
+        logging.error(f"Errore HF fallback dettagliato: {str(e)}")
+        return "Sto imparando... chiedimi di cercare o carica un PDF!"
 
 # Web search
 def web_search_multi(query):

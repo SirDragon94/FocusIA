@@ -27,6 +27,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 wikipedia.set_lang("it")
 UPLOAD_FOLDER = 'uploads'
@@ -46,7 +47,6 @@ logging.basicConfig(level=logging.INFO)
 
 # Supabase client
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
-
 if not supabase:
     logging.error("SUPABASE_URL o SUPABASE_KEY mancanti nelle env vars!")
 
@@ -106,7 +106,7 @@ def save_interaction(prompt, response, confidence, category, sentiment, embeddin
     try:
         supabase.table("knowledge").insert(data).execute()
     except Exception as e:
-        logging.error(f"Errore save_interaction: {e}")
+        logging.error(f"Errore save_interaction: {str(e)}")
 
 # Update brain_state
 def update_brain_state(age_inc=0.1, curiosity_adj=0, empathy_adj=0, clusters_adj=0):
@@ -145,7 +145,8 @@ def get_brain_state():
     try:
         result = supabase.table("brain_state").select("*").execute()
         return {row["key"]: row["value"] for row in result.data}
-    except:
+    except Exception as e:
+        logging.error(f"Errore get_brain_state: {str(e)}")
         return {"age": 0.0, "curiosity": 0.8, "empathy": 0.5, "knowledge_clusters": 3.0}
 
 # Search database (simplified similarity)
@@ -188,17 +189,30 @@ def evolve_prompts():
     if not supabase:
         return
     try:
-        # Conteggio corretto con Supabase (usa count=True e prendi result.count)
         count_result = supabase.table("knowledge").select("*", count="exact").execute()
         interaction_count = count_result.count or 0
         if interaction_count % 5 != 0:
             return
-        # Resto invariato...
         best_prompt_result = supabase.table("prompts").select("system_prompt").order("score", desc=True).limit(1).execute()
         best_prompt = best_prompt_result.data[0]["system_prompt"] if best_prompt_result.data else "Sei FocusIA, un'IA evolutiva."
-        # ... continua con variants, test, ecc.
+        variants = [
+            best_prompt + " Aggiungi dettagli da conoscenze apprese.",
+            best_prompt.replace("professionale", "conciso"),
+            best_prompt + " Prioritizza evoluzione."
+        ]
+        test_prompt = "Cos'è il Deep Work?"
+        test_ref = "Il Deep Work è la chiave per la produttività massima."
+        best_score = -1
+        best_variant = best_prompt
+        for var in variants:
+            response = get_ai_response(test_prompt, system_prompt=var)
+            score = 1 - abs(len(response) - len(test_ref)) / max(len(response), len(test_ref), 1)
+            if score > best_score:
+                best_score = score
+                best_variant = var
+        supabase.table("prompts").insert({"system_prompt": best_variant, "score": best_score}).execute()
     except Exception as e:
-        logging.error(f"Errore evolve_prompts: {e}")
+        logging.error(f"Errore evolve_prompts: {str(e)}")
 
 # AI response
 def get_ai_response(prompt, system_prompt=None):
@@ -215,7 +229,7 @@ def get_ai_response(prompt, system_prompt=None):
     if psutil.virtual_memory().percent > 70:
         return "Memoria bassa: risposta base. " + augmented_prompt
 
-    # Prova Groq se hai la key (principale ora)
+    # Groq fallback (principale)
     GROQ_API_KEY = os.getenv("GROQ_API_KEY")
     if GROQ_API_KEY:
         try:
@@ -240,9 +254,6 @@ def get_ai_response(prompt, system_prompt=None):
 
     # Fallback finale se Groq non c'è o fallisce
     return "Sto imparando... chiedimi di cercare o carica un PDF! Curiosità: " + str(get_brain_state().get("curiosity", 0.8)) + "..."
-
-# Fallback se Groq non c'è o fallisce
-return "Sto imparando... chiedimi di cercare o carica un PDF!"
 
 # Web search
 def web_search_multi(query):
@@ -275,7 +286,7 @@ def curiosity_learning():
                     save_interaction(weak_prompt, new_res, conf, "curiosity", sent, emb)
                     update_brain_state(curiosity_adj=-0.05 if conf > 0.7 else 0.05)
         except Exception as e:
-            logging.error(f"Errore curiosity: {e}")
+            logging.error(f"Errore curiosity: {str(e)}")
 
 # Sentiment analysis
 def analyze_sentiment(response):
@@ -309,7 +320,7 @@ def chatbot_response(prompt):
         else:
             response = get_ai_response(prompt + "\nContesto: " + context)
 
-        # Fallback manuale per saluti semplici (prima di generare con AI)
+        # Fallback manuale per saluti semplici
         if any(word in prompt.lower() for word in ["ciao", "salve", "buongiorno", "buonasera", "hey", "hi", "hello"]):
             response = "Ciao! Come posso aiutarti oggi? 😊 Curiosità: " + str(state.get("curiosity", 0.8)) + "..."
         elif any(word in prompt.lower() for word in ["come stai", "tutto ok", "come va", "stai bene"]):
@@ -331,6 +342,7 @@ def chatbot_response(prompt):
     threading.Thread(target=curiosity_learning).start()
     return response
 
+# HTML (tutta la dashboard)
 HTML = """
 <!DOCTYPE html>
 <html lang="it">
@@ -570,7 +582,7 @@ def feedback():
         new_conf = current_conf + 0.1 * rating
         supabase.table("knowledge").update({"confidence": new_conf}).eq("id", interaction_id).execute()
     except Exception as e:
-        logging.error(f"Errore feedback: {e}")
+        logging.error(f"Errore feedback: {str(e)}")
     return jsonify({"status": "ok"})
 
 @app.route('/upload', methods=['POST'])
@@ -587,7 +599,7 @@ def upload_file():
                 "prompt": f"PDF: {filename}",
                 "response": json.dumps(chunks),
                 "category": "pdf",
-                "embedding": get_embedding(filename).tolist()
+                "embedding": json.dumps(get_embedding(filename).tolist())
             }
             supabase.table("knowledge").insert(data).execute()
         return jsonify({"message": "Analizzato e indicizzato!"})
@@ -608,7 +620,8 @@ def get_tasks():
         result = supabase.table("tasks").select("task").order("id", desc=True).execute()
         tasks = [{"task": row["task"]} for row in result.data]
         return jsonify(tasks)
-    except:
+    except Exception as e:
+        logging.error(f"Errore get_tasks: {str(e)}")
         return jsonify([])
 
 if __name__ == "__main__":

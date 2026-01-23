@@ -160,7 +160,7 @@ def search_database(prompt):
         prompt_emb = get_embedding(prompt)
         best_match = None
         best_score = -1
-               for item in interactions:
+        for item in interactions:
             past_emb_str = item["embedding"]
             if past_emb_str and past_emb_str.strip():
                 try:

@@ -302,21 +302,26 @@ def chatbot_response(prompt):
     db_res = search_database(prompt)
     if db_res:
         response = db_res
-    if any(word in prompt.lower() for word in ["ciao", "salve", "buongiorno", "buonasera", "hey", "hi", "hello"]):
-    response = "Ciao! Come posso aiutarti oggi? 😊 Curiosità: " + str(state.get("curiosity", 0.8)) + "..."
-    elif any(word in prompt.lower() for word in ["come stai", "tutto ok", "come va"]):
-    response = "Bene, grazie! E tu come stai? Curiosità: " + str(state.get("curiosity", 0.8)) + "..."    
     else:
         needs_web = any(k in prompt.lower() for k in ["chi è", "cos'è", "cerca", "news"])
         if needs_web:
             response = web_search_multi(prompt)
         else:
             response = get_ai_response(prompt + "\nContesto: " + context)
-        conf = random.uniform(0.7, 0.95)
-        sent = analyze_sentiment(response)
-        emb = get_embedding(prompt)
-        save_interaction(prompt, response, conf, "general", sent, emb)
-        update_brain_state()
+
+        # Fallback manuale per saluti semplici (prima di generare con AI)
+        if any(word in prompt.lower() for word in ["ciao", "salve", "buongiorno", "buonasera", "hey", "hi", "hello"]):
+            response = "Ciao! Come posso aiutarti oggi? 😊 Curiosità: " + str(state.get("curiosity", 0.8)) + "..."
+        elif any(word in prompt.lower() for word in ["come stai", "tutto ok", "come va", "stai bene"]):
+            response = "Bene, grazie! E tu come stai? Curiosità: " + str(state.get("curiosity", 0.8)) + "..."
+        elif len(prompt.split()) < 3:
+            response = "Ciao! Dimmi pure, sono qui per aiutarti. Curiosità: " + str(state.get("curiosity", 0.8)) + "..."
+
+    conf = random.uniform(0.7, 0.95)
+    sent = analyze_sentiment(response)
+    emb = get_embedding(prompt)
+    save_interaction(prompt, response, conf, "general", sent, emb)
+    update_brain_state()
     personality = random.choice([
         " Con focus...",
         f" Curiosità: {state.get('curiosity', 0.8):.1f}..."

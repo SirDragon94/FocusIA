@@ -217,37 +217,29 @@ def get_ai_response(prompt, system_prompt=None):
 
         # Fallback Groq (se hai la key)
     GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-    if GROQ_API_KEY:
-        try:
-            res = requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-                json={
-                    "model": "llama-3.1-8b-instant",
-                    "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": augmented_prompt}],
-                    "temperature": 0.7,
-                    "max_tokens": 200
-                },
-                timeout=15
-            )
-            logging.info(f"Groq status: {res.status_code}, text: {res.text[:200]}")
-            return res.json()['choices'][0]['message']['content']
-        except Exception as e:
-            logging.error(f"Errore Groq: {str(e)}")
-
-    # Vecchio fallback HF (opzionale, commenta se vuoi)
+if GROQ_API_KEY:
     try:
         res = requests.post(
-            "https://router.huggingface.co/models/distilgpt2",
-            headers={"Authorization": f"Bearer {HUGGINGFACE_TOKEN}"},
-            json={"inputs": augmented_prompt},
-            timeout=30
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+            json={
+                "model": "llama-3.1-8b-instant",  # veloce e gratuito
+                "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": augmented_prompt}],
+                "temperature": 0.7,
+                "max_tokens": 300
+            },
+            timeout=15
         )
-        logging.info(f"HF status: {res.status_code}, text: {res.text[:200]}")
-        return res.json()[0]['generated_text']
+        logging.info(f"Groq status: {res.status_code}, text: {res.text[:200]}")
+        if res.status_code == 200:
+            return res.json()['choices'][0]['message']['content']
+        else:
+            logging.error(f"Groq error: {res.status_code} - {res.text}")
     except Exception as e:
-        logging.error(f"Errore HF fallback dettagliato: {str(e)}")
-        return "Sto imparando... chiedimi di cercare o carica un PDF!"
+        logging.error(f"Errore Groq: {str(e)}")
+
+# Fallback se Groq non c'è o fallisce
+return "Sto imparando... chiedimi di cercare o carica un PDF!"
 
 # Web search
 def web_search_multi(query):

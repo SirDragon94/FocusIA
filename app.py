@@ -320,7 +320,7 @@ def chatbot_response(prompt):
         else:
             response = get_ai_response(prompt + "\nContesto: " + context)
 
-        # Fallback manuale per saluti semplici (prima di conf/sent/emb)
+        # Fallback manuale per saluti semplici
         if any(word in prompt.lower() for word in ["ciao", "salve", "buongiorno", "buonasera", "hey", "hi", "hello"]):
             response = "Ciao! Come posso aiutarti oggi? 😊 Curiosità: " + str(state.get("curiosity", 0.8)) + "..."
         elif any(word in prompt.lower() for word in ["come stai", "tutto ok", "come va", "stai bene"]):

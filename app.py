@@ -56,16 +56,17 @@ def get_embedding(text):
         return embedding_cache[text]
     try:
         res = requests.post(
-            "https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2",
+            "https://router.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2",
             headers={"Authorization": f"Bearer {HUGGINGFACE_TOKEN}"},
             json={"inputs": text},
             timeout=5
         )
+        logging.info(f"Embedding HF status: {res.status_code}, text: {res.text[:200]}")
         emb = np.array(res.json()[0])
         embedding_cache[text] = emb
         return emb
     except Exception as e:
-        logging.error(f"Errore embedding: {e}")
+        logging.error(f"Errore embedding: {str(e)}")
         return np.zeros(384)
 
 # Update RAG index
@@ -229,17 +230,17 @@ def get_ai_response(prompt, system_prompt=None):
         except Exception as e:
             logging.error(f"Errore OpenAI: {e}")
     try:
-        res = requests.post(
-            "https://api-inference.huggingface.co/models/distilgpt2",  # Modello cambiato per stabilità
-            headers={"Authorization": f"Bearer {HUGGINGFACE_TOKEN}"},
-            json={"inputs": augmented_prompt},
-            timeout=30
-        )
-        logging.info(f"HF status: {res.status_code}, text: {res.text[:200]}")
-        return res.json()[0]['generated_text']
-    except Exception as e:
-        logging.error(f"Errore HF fallback dettagliato: {str(e)}")
-        return "Sto imparando... chiedimi di cercare o carica un PDF!"
+    res = requests.post(
+        "https://router.huggingface.co/models/distilgpt2",
+        headers={"Authorization": f"Bearer {HUGGINGFACE_TOKEN}"},
+        json={"inputs": augmented_prompt},
+        timeout=30
+    )
+    logging.info(f"HF status: {res.status_code}, text: {res.text[:200]}")
+    return res.json()[0]['generated_text']
+except Exception as e:
+    logging.error(f"Errore HF fallback dettagliato: {str(e)}")
+    return "Sto imparando... chiedimi di cercare o carica un PDF!"
 
 # Web search
 def web_search_multi(query):

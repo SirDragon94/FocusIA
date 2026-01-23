@@ -161,19 +161,19 @@ def search_database(prompt):
         best_match = None
         best_score = -1
         for item in interactions:
-            past_emb_str = item["embedding"]
-            if past_emb_str and past_emb_str.strip():
-                try:
-                    past_emb = np.array(json.loads(past_emb_str))
-                except json.JSONDecodeError:
-                    past_emb = np.zeros(384)
-            else:
-                past_emb = np.zeros(384)
-            similarity = np.dot(prompt_emb, past_emb) / (np.linalg.norm(prompt_emb) * np.linalg.norm(past_emb) + 1e-8)
-            score = (similarity * 0.7) + (item["confidence"] * 0.2) + (min(item["usage_count"], 10) * 0.1 / 10)
-            if score > best_score and similarity > 0.6:
-                best_score = score
-                best_match = (item["response"], item["id"])
+    past_emb_str = item["embedding"]
+    if past_emb_str:
+        try:
+            past_emb = np.array(json.loads(past_emb_str))
+        except (json.JSONDecodeError, TypeError, ValueError):
+            past_emb = np.zeros(384)
+    else:
+        past_emb = np.zeros(384)
+    similarity = np.dot(prompt_emb, past_emb) / (np.linalg.norm(prompt_emb) * np.linalg.norm(past_emb) + 1e-8)
+    score = (similarity * 0.7) + (item["confidence"] * 0.2) + (min(item["usage_count"], 10) * 0.1 / 10)
+    if score > best_score and similarity > 0.6:
+        best_score = score
+        best_match = (item["response"], item["id"])
         if best_match:
             current_count = supabase.table("knowledge").select("usage_count").eq("id", best_match[1]).execute().data[0]["usage_count"]
             supabase.table("knowledge").update({"usage_count": current_count + 1}).eq("id", best_match[1]).execute()
@@ -215,28 +215,31 @@ def get_ai_response(prompt, system_prompt=None):
     if psutil.virtual_memory().percent > 70:
         return "Memoria bassa: risposta base. " + augmented_prompt
 
-        # Fallback Groq (se hai la key)
+    # Prova Groq se hai la key (principale ora)
     GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-if GROQ_API_KEY:
-    try:
-        res = requests.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-            json={
-                "model": "llama-3.1-8b-instant",  # veloce e gratuito
-                "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": augmented_prompt}],
-                "temperature": 0.7,
-                "max_tokens": 300
-            },
-            timeout=15
-        )
-        logging.info(f"Groq status: {res.status_code}, text: {res.text[:200]}")
-        if res.status_code == 200:
-            return res.json()['choices'][0]['message']['content']
-        else:
-            logging.error(f"Groq error: {res.status_code} - {res.text}")
-    except Exception as e:
-        logging.error(f"Errore Groq: {str(e)}")
+    if GROQ_API_KEY:
+        try:
+            res = requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                json={
+                    "model": "llama-3.1-8b-instant",
+                    "messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": augmented_prompt}],
+                    "temperature": 0.7,
+                    "max_tokens": 300
+                },
+                timeout=15
+            )
+            logging.info(f"Groq status: {res.status_code}, text: {res.text[:200]}")
+            if res.status_code == 200:
+                return res.json()['choices'][0]['message']['content']
+            else:
+                logging.error(f"Groq error {res.status_code}: {res.text}")
+        except Exception as e:
+            logging.error(f"Errore Groq: {str(e)}")
+
+    # Fallback finale se Groq non c'è o fallisce
+    return "Sto imparando... chiedimi di cercare o carica un PDF! Curiosità: " + str(get_brain_state().get("curiosity", 0.8)) + "..."
 
 # Fallback se Groq non c'è o fallisce
 return "Sto imparando... chiedimi di cercare o carica un PDF!"
@@ -299,6 +302,10 @@ def chatbot_response(prompt):
     db_res = search_database(prompt)
     if db_res:
         response = db_res
+    if any(word in prompt.lower() for word in ["ciao", "salve", "buongiorno", "buonasera", "hey", "hi", "hello"]):
+    response = "Ciao! Come posso aiutarti oggi? 😊 Curiosità: " + str(state.get("curiosity", 0.8)) + "..."
+    elif any(word in prompt.lower() for word in ["come stai", "tutto ok", "come va"]):
+    response = "Bene, grazie! E tu come stai? Curiosità: " + str(state.get("curiosity", 0.8)) + "..."    
     else:
         needs_web = any(k in prompt.lower() for k in ["chi è", "cos'è", "cerca", "news"])
         if needs_web:

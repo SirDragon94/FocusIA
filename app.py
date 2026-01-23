@@ -163,7 +163,7 @@ def search_database(prompt):
         best_score = -1
         for item in interactions:
             past_emb_str = item["embedding"]
-            if past_emb_str and past_emb_str.strip():
+            if past_emb_str:
                 try:
                     past_emb = np.array(json.loads(past_emb_str))
                 except (json.JSONDecodeError, TypeError, ValueError):
@@ -252,7 +252,7 @@ def get_ai_response(prompt, system_prompt=None):
         except Exception as e:
             logging.error(f"Errore Groq: {str(e)}")
 
-    # Fallback finale se Groq non c'è o fallisce
+    # Fallback finale
     return "Sto imparando... chiedimi di cercare o carica un PDF! Curiosità: " + str(get_brain_state().get("curiosity", 0.8)) + "..."
 
 # Web search
@@ -310,7 +310,7 @@ def chatbot_response(prompt):
     global context_memory
     state = get_brain_state()
     context = "\n".join(context_memory)
-    db_res = search_database(prompt)
+        db_res = search_database(prompt)
     if db_res:
         response = db_res
     else:
@@ -325,6 +325,8 @@ def chatbot_response(prompt):
             response = "Ciao! Come posso aiutarti oggi? 😊 Curiosità: " + str(state.get("curiosity", 0.8)) + "..."
         elif any(word in prompt.lower() for word in ["come stai", "tutto ok", "come va", "stai bene"]):
             response = "Bene, grazie! E tu come stai? Curiosità: " + str(state.get("curiosity", 0.8)) + "..."
+        elif "ci sei" in prompt.lower() or "ci sei?" in prompt.lower():
+            response = "Sì, ci sono! 😄 Dimmi tutto, sono pronto. Curiosità: " + str(state.get("curiosity", 0.8)) + "..."
         elif len(prompt.split()) < 3:
             response = "Ciao! Dimmi pure, sono qui per aiutarti. Curiosità: " + str(state.get("curiosity", 0.8)) + "..."
 

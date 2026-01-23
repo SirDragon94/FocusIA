@@ -310,7 +310,7 @@ def chatbot_response(prompt):
     global context_memory
     state = get_brain_state()
     context = "\n".join(context_memory)
-        db_res = search_database(prompt)
+    db_res = search_database(prompt)
     if db_res:
         response = db_res
     else:

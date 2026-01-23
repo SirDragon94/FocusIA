@@ -163,7 +163,7 @@ def search_database(prompt):
         best_score = -1
         for item in interactions:
             past_emb_str = item["embedding"]
-            if past_emb_str:
+            if past_emb_str and past_emb_str.strip():
                 try:
                     past_emb = np.array(json.loads(past_emb_str))
                 except (json.JSONDecodeError, TypeError, ValueError):
@@ -252,7 +252,7 @@ def get_ai_response(prompt, system_prompt=None):
         except Exception as e:
             logging.error(f"Errore Groq: {str(e)}")
 
-    # Fallback finale
+    # Fallback finale se Groq non c'è o fallisce
     return "Sto imparando... chiedimi di cercare o carica un PDF! Curiosità: " + str(get_brain_state().get("curiosity", 0.8)) + "..."
 
 # Web search
@@ -320,7 +320,7 @@ def chatbot_response(prompt):
         else:
             response = get_ai_response(prompt + "\nContesto: " + context)
 
-        # Fallback manuale per saluti semplici
+        # Fallback manuale per saluti semplici (prima di conf/sent/emb)
         if any(word in prompt.lower() for word in ["ciao", "salve", "buongiorno", "buonasera", "hey", "hi", "hello"]):
             response = "Ciao! Come posso aiutarti oggi? 😊 Curiosità: " + str(state.get("curiosity", 0.8)) + "..."
         elif any(word in prompt.lower() for word in ["come stai", "tutto ok", "come va", "stai bene"]):

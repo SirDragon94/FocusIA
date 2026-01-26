@@ -2,7 +2,6 @@
 FocusIA - Optimized Self-Evolving AI for Render Free Tier with Supabase
 Copyright (C) 2025 Xhulio Guranjaku
 """
-
 import os
 import threading
 import requests
@@ -50,7 +49,7 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and
 if not supabase:
     logging.error("SUPABASE_URL o SUPABASE_KEY mancanti nelle env vars!")
 
-# Embedding via HF API
+# Embedding via HF API (se usato)
 def get_embedding(text):
     if text in embedding_cache:
         return embedding_cache[text]
@@ -78,17 +77,9 @@ def update_rag_index(new_chunks):
     index.add(embeddings)
     knowledge_chunks.extend(new_chunks)
 
-# Retrieve RAG
+# Retrieve RAG (disabilitato per RAM)
 def retrieve_relevant_chunks(query, top_k=2):
-    if index is None or not hasattr(index, 'ntotal') or index.ntotal == 0:
-        return []
-    try:
-        query_emb = get_embedding(query)
-        D, I = index.search(np.array([query_emb]), top_k)
-        return [knowledge_chunks[i] for i in I[0] if i < len(knowledge_chunks)]
-    except Exception as e:
-        logging.error(f"Errore retrieval RAG: {e}")
-        return []
+    return []  # RAG disabilitato per ridurre consumo RAM
 
 # Save interaction in knowledge
 def save_interaction(prompt, response, confidence, category, sentiment, embedding):
@@ -101,12 +92,12 @@ def save_interaction(prompt, response, confidence, category, sentiment, embeddin
         "category": category,
         "usage_count": 0,
         "sentiment": sentiment,
-        "embedding": json.dumps(embedding.tolist()) if embedding is not None and embedding.any() else None
+        "embedding": None  # Disabilitato per RAM bassa
     }
     try:
         supabase.table("knowledge").insert(data).execute()
     except Exception as e:
-        logging.error(f"Errore save_interaction: {str(e)}")
+        logging.error(f"Errore save_interaction: {e}")
 
 # Update brain_state
 def update_brain_state(age_inc=0.1, curiosity_adj=0, empathy_adj=0, clusters_adj=0):
@@ -145,8 +136,7 @@ def get_brain_state():
     try:
         result = supabase.table("brain_state").select("*").execute()
         return {row["key"]: row["value"] for row in result.data}
-    except Exception as e:
-        logging.error(f"Errore get_brain_state: {str(e)}")
+    except:
         return {"age": 0.0, "curiosity": 0.8, "empathy": 0.5, "knowledge_clusters": 3.0}
 
 # Search database (simplified similarity)
@@ -195,6 +185,7 @@ def evolve_prompts():
             return
         best_prompt_result = supabase.table("prompts").select("system_prompt").order("score", desc=True).limit(1).execute()
         best_prompt = best_prompt_result.data[0]["system_prompt"] if best_prompt_result.data else "Sei FocusIA, un'IA evolutiva."
+        # Continua con variants, test, ecc.
         variants = [
             best_prompt + " Aggiungi dettagli da conoscenze apprese.",
             best_prompt.replace("professionale", "conciso"),
@@ -229,7 +220,7 @@ def get_ai_response(prompt, system_prompt=None):
     if psutil.virtual_memory().percent > 70:
         return "Memoria bassa: risposta base. " + augmented_prompt
 
-    # Groq fallback (principale)
+    # Prova Groq se hai la key
     GROQ_API_KEY = os.getenv("GROQ_API_KEY")
     if GROQ_API_KEY:
         try:
@@ -252,7 +243,7 @@ def get_ai_response(prompt, system_prompt=None):
         except Exception as e:
             logging.error(f"Errore Groq: {str(e)}")
 
-    # Fallback finale se Groq non c'è o fallisce
+    # Fallback finale
     return "Sto imparando... chiedimi di cercare o carica un PDF! Curiosità: " + str(get_brain_state().get("curiosity", 0.8)) + "..."
 
 # Web search
@@ -286,7 +277,7 @@ def curiosity_learning():
                     save_interaction(weak_prompt, new_res, conf, "curiosity", sent, emb)
                     update_brain_state(curiosity_adj=-0.05 if conf > 0.7 else 0.05)
         except Exception as e:
-            logging.error(f"Errore curiosity: {str(e)}")
+            logging.error(f"Errore curiosity: {e}")
 
 # Sentiment analysis
 def analyze_sentiment(response):
@@ -332,7 +323,7 @@ def chatbot_response(prompt):
 
     conf = random.uniform(0.7, 0.95)
     sent = analyze_sentiment(response)
-    emb = get_embedding(prompt)
+    emb = None  # No embedding per RAM bassa
     save_interaction(prompt, response, conf, "general", sent, emb)
     update_brain_state()
     personality = random.choice([
@@ -384,7 +375,6 @@ HTML = """
         <div class="nav-item" onclick="showTab('upload', this)">📂 Documenti</div>
         <div style="margin-top: auto; font-size: 12px; color: #a0aec0;">© 2025 Xhulio Guranjaku</div>
     </div>
-
     <div id="main">
         <!-- Tab Chat -->
         <div id="chat" class="tab-content active">
@@ -398,7 +388,6 @@ HTML = """
                 </div>
             </div>
         </div>
-
         <!-- Tab Deep Work -->
         <div id="tasks" class="tab-content">
             <div class="card">
@@ -415,7 +404,6 @@ HTML = """
                 <ul id="task-list" style="list-style: none; padding: 0;"></ul>
             </div>
         </div>
-
         <!-- Tab Upload -->
         <div id="upload" class="tab-content">
             <div class="card">
@@ -427,7 +415,6 @@ HTML = """
             </div>
         </div>
     </div>
-
     <script>
         function showTab(tabId, el) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -446,7 +433,7 @@ HTML = """
             input.value = '';
             chatBox.scrollTop = chatBox.scrollHeight;
 
-            try {
+            try:
                 const res = await fetch('/chat', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -486,7 +473,7 @@ HTML = """
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
             status.innerHTML = "⏳ Analisi in corso...";
-            try {
+            try:
                 const res = await fetch('/upload', { method: 'POST', body: formData });
                 const data = await res.json();
                 status.innerHTML = "✅ " + data.message;
@@ -510,7 +497,7 @@ HTML = """
         async function loadTasks() {
             const res = await fetch('/get_tasks');
             const tasks = await res.json();
-            document.getElementById('task-list').innerHTML = tasks.map(t => 
+            document.getElementById('task-list').innerHTML = tasks.map(t =>
                 `<li style="padding: 10px; border-bottom: 1px solid #edf2f7;">📌 ${t.task}</li>`).join('');
         }
 
@@ -584,7 +571,7 @@ def feedback():
         new_conf = current_conf + 0.1 * rating
         supabase.table("knowledge").update({"confidence": new_conf}).eq("id", interaction_id).execute()
     except Exception as e:
-        logging.error(f"Errore feedback: {str(e)}")
+        logging.error(f"Errore feedback: {e}")
     return jsonify({"status": "ok"})
 
 @app.route('/upload', methods=['POST'])
@@ -601,7 +588,7 @@ def upload_file():
                 "prompt": f"PDF: {filename}",
                 "response": json.dumps(chunks),
                 "category": "pdf",
-                "embedding": json.dumps(get_embedding(filename).tolist())
+                "embedding": None  # No embedding per RAM bassa
             }
             supabase.table("knowledge").insert(data).execute()
         return jsonify({"message": "Analizzato e indicizzato!"})

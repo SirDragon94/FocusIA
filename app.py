@@ -388,6 +388,7 @@ HTML = """
                 </div>
             </div>
         </div>
+
         <!-- Tab Deep Work -->
         <div id="tasks" class="tab-content">
             <div class="card">
@@ -404,6 +405,7 @@ HTML = """
                 <ul id="task-list" style="list-style: none; padding: 0;"></ul>
             </div>
         </div>
+
         <!-- Tab Upload -->
         <div id="upload" class="tab-content">
             <div class="card">
@@ -415,6 +417,7 @@ HTML = """
             </div>
         </div>
     </div>
+
     <script>
         function showTab(tabId, el) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -423,7 +426,7 @@ HTML = """
             el.classList.add('active');
         }
 
-        async function sendMessage() {
+        function sendMessage() {
             const input = document.getElementById('user-input');
             const chatBox = document.getElementById('chat-box');
             const text = input.value.trim();
@@ -433,15 +436,18 @@ HTML = """
             input.value = '';
             chatBox.scrollTop = chatBox.scrollHeight;
 
-            try:
-                const res = await fetch('/chat', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({prompt: text})
-                });
-                if (!res.ok) throw new Error('Errore server');
-                const data = await res.json();
-
+            fetch('/chat', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({prompt: text})
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Errore server: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
                 chatBox.innerHTML += `<div class="msg ai-msg"><b>FocusIA:</b> ${data.response}</div>`;
                 if (data.interaction_id) {
                     chatBox.innerHTML += `
@@ -451,54 +457,64 @@ HTML = """
                         </div>`;
                 }
                 chatBox.scrollTop = chatBox.scrollHeight;
-            } catch (err) {
+            })
+            .catch(err => {
                 chatBox.innerHTML += `<div class="msg ai-msg" style="color:red;">Errore: ${err.message}</div>`;
                 chatBox.scrollTop = chatBox.scrollHeight;
-            }
+            });
         }
 
-        async function sendFeedback(id, rating) {
-            await fetch('/feedback', {
+        function sendFeedback(id, rating) {
+            fetch('/feedback', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({id: id, rating: rating})
-            });
-            alert('Grazie per il feedback!');
+            })
+            .then(() => alert('Grazie per il feedback!'))
+            .catch(err => alert('Errore feedback: ' + err.message));
         }
 
-        async function uploadPDF() {
+        function uploadPDF() {
             const fileInput = document.getElementById('pdf-file');
             const status = document.getElementById('upload-status');
             if (!fileInput.files[0]) return;
             const formData = new FormData();
             formData.append('file', fileInput.files[0]);
             status.innerHTML = "⏳ Analisi in corso...";
-            try:
-                const res = await fetch('/upload', { method: 'POST', body: formData });
-                const data = await res.json();
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
                 status.innerHTML = "✅ " + data.message;
-            } catch (err) {
+            })
+            .catch(err => {
                 status.innerHTML = "❌ Errore: " + err.message;
-            }
+            });
         }
 
-        async function addTask() {
+        function addTask() {
             const input = document.getElementById('task-input');
             if (!input.value) return;
-            await fetch('/add_task', {
+            fetch('/add_task', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({task: input.value})
+            })
+            .then(() => {
+                input.value = '';
+                loadTasks();
             });
-            input.value = '';
-            loadTasks();
         }
 
-        async function loadTasks() {
-            const res = await fetch('/get_tasks');
-            const tasks = await res.json();
-            document.getElementById('task-list').innerHTML = tasks.map(t =>
-                `<li style="padding: 10px; border-bottom: 1px solid #edf2f7;">📌 ${t.task}</li>`).join('');
+        function loadTasks() {
+            fetch('/get_tasks')
+            .then(response => response.json())
+            .then(tasks => {
+                document.getElementById('task-list').innerHTML = tasks.map(t => 
+                    `<li style="padding: 10px; border-bottom: 1px solid #edf2f7;">📌 ${t.task}</li>`).join('');
+            });
         }
 
         let timerInterval;
